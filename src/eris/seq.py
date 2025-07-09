@@ -18,6 +18,7 @@ from uuid import uuid4
 
 from eris import Requires, RESOURCES
 from eris.alphabet import Alphabet, DNA, _DNA
+from eris.graph import Edge, GraphError
 
 # Constants ------------------------------------------------------------------------------------------------------------
 _TYPE2TAG = {float: 'f', int: 'i', str: 'Z'}  # See: https://github.com/GFA-spec/GFA-spec/blob/master/GFA1.md#optional-fields
@@ -52,7 +53,8 @@ class Location:
         #  https://github.com/sanger-pathogens/Fastaq/blob/master/src/pyfastaq/intervals.py
 
     def __repr__(self):
-        return f"{self.start}-{self.end} {self.strand}"
+        return (f"{'>' if self.partial_start else ''}{self.start}:{self.end}{'<' if self.partial_end else ''}"
+                f"({'+' if self.strand == 1 else '-'})")
 
     def __len__(self):
         return self.end - self.start
@@ -98,6 +100,14 @@ class Location:
         else:
             raise TypeError(other)
 
+    def __format__(self, __format_spec: Literal['tsv'] = '') -> str:
+        if __format_spec == '':
+            return self.__str__()
+        elif __format_spec == 'tsv':
+            return f'{self.parent_id}\t{self.start}\t{self.end}\t{self.strand}'
+        else:
+            raise NotImplementedError(f'Invalid format: {__format_spec}')
+
     def partial(self) -> bool:
         """
         Returns True if the location is partial, False otherwise
@@ -140,6 +150,12 @@ class Location:
 
     def shift(self, by: int):
         return Location(self.start + by, self.end + by, self.strand)
+
+    def reverse_complement(self, parent_length: int) -> 'Location':
+        return Location(
+            parent_length - self.end, parent_length - self.start, -self.strand,
+            self.partial_end, self.partial_start, self.parent_id
+        )
 
     @classmethod
     def random(cls, rng: Random = RESOURCES.rng, length: int = None, min_len: int = 1, max_len: int = 10000,
@@ -349,10 +365,10 @@ class Qualifier:
     """
     def __init__(self, key: str, value: Any = None):
         self.key = key
-        self.value = value
+        self.value = value if value != '' or value is not None else ''  # We still want zeroes
 
     def __repr__(self):
-        return f"{self.key}={self.value}"
+        return f"{self.key}={self.value}" if self.value != '' or self.value is not None else self.key
 
     def __iter__(self) -> Iterator[tuple[str, Any]]:
         return iter((self.key, self.value))
@@ -551,69 +567,45 @@ class Record:
         else:
             return Record(self.id, self.seq.translate(to_stop, stop_symbol, frame, gap_character), self.desc)
 
-    @Requires(requires='matplotlib')
-    def plot(
-            self, ax: 'plt.Axes' = None, arrow_shaft_width: float = 0.4, head_width_ratio: float = 1.5,
-            head_length_ratio: float = 0.2, face_color: str = "lightsalmon",
-            line_width: int = 3, edge_color='orangered', label_color: str = 'black', label_offset: float = 0.2,
-            record_color: str = "black", show_record: bool = True, label_features: bool = True, label_size: float = 8
-    ) -> tuple['Figure', 'plt.Axes']:
+    def as_edge_list(self) -> Generator[Edge, None, None]:
         """
-        Plots the record and its features.
-
-        :param ax: Matplotlib axes object
-        :param arrow_shaft_width: Width of the arrow shaft
-        :param head_width_ratio: Ratio of head width to shaft width
-        :param head_length_ratio: Ratio of head length to feature length
-        :param face_color: Face color of the features
-        :param line_width: Line width of the feature edges
-        :param edge_color: Edge color of the features
-        :param label_color: Color of the feature labels
-        :param label_offset: Offset of the feature labels from the features
-        :param record_color: Color of the record line
-        :param show_record: Boolean to show the record line
-        :param label_features: Boolean to label the features
-        :param label_size: Size of the feature labels
-        :return: Matplotlib figure and axes objects
+        Yields edges of the record features to be used in a Graph.
+        The node attributes represent the feature strands, and the weight represents the distance between the
+        features. If the record is circular, the last feature is connected to the first feature.
         """
-        import matplotlib.pyplot as plt
-        from matplotlib.patches import Polygon
-        from matplotlib.collections import PatchCollection
-
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(12, 2))
+        if len(self.features) == 0:
+            return None
         else:
-            fig = ax.figure  # Get existing figure
-        max_head_length = 0.1 * len(self)  # Cap head length at 10% of record length
-        if show_record:
-            ax.plot([0, len(self)], [0, 0], color=record_color, lw=2, solid_capstyle='butt')
+            for position, to in enumerate(self.features):
+                if position > 0:
+                    fr = self.features[position - 1]
+                    distance = to.location.start - fr.location.end
+                    yield Edge(fr.id, to.id, fr.location.strand, to.location.strand, distance)
+            if (topology := next((v for k, v in self.qualifiers if k == 'topology'), None)) and topology == 'circular':
+                fr, to = self.features[-1], self.features[0]
+                distance = (len(self) - fr.location.end) + to.location.start
+                yield Edge(fr.id, to.id, fr.location.strand, to.location.strand, distance)
 
-        patches = []
-        for f in self.features:
-            points = f.location._get_points(max_head_length, 'arrow' if f.kind == 'CDS' else 'box',
-                                            arrow_shaft_width, head_width_ratio, head_length_ratio)
-            patches.append(
-                Polygon(points, closed=True, fill=True, facecolor=face_color, linewidth=line_width, edgecolor=edge_color)
-            )
-            if label_features:
-                label_x = (f.location.start + f.location.end) / 2
-                label_y = label_offset  # Position above the feature
-                ax.text(label_x, label_y, f.id, ha='center', va='bottom', rotation=45, fontsize=label_size,
-                        color=label_color)
+    def reverse_complement(self) -> 'Record':
+        """
+        Returns the reverse complement of the record.
+        """
+        return Record(self.id, self.seq.reverse_complement(), self.desc, self.qualifiers,
+                      [f.reverse_complement(len(self)) for f in self.features[::-1]])
 
-        collection = PatchCollection(patches, match_original=True)
-        ax.add_collection(collection)
-        ax.set_xlim(0, len(self))
-        ax.set_ylim(-1, 1.5)  # Adjust ylim to accommodate labels
-        ax.set_title(f"{self.id} - {self.desc}")
-        ax.set_xlabel("Position")
-        ax.set_yticks([])
-        return fig, ax
+    def add_features(self, *features: HasLocation):
+        """
+        Adds features to the record.
+        :param features: Features to add to the record.
+        """
+        self.features += features
+        self.features.sort(key=attrgetter('location.start'))
 
 
 class Feature(HasLocation):
     """
-    Represents a feature on a sequence.
+    Represents a feature on a sequence, consisting of a location.
+    Unlike the BioPython Features, these Features may store their sequences as an attribute, but may not always.
 
     Attributes:
         id: The unique identifier for the feature.
@@ -653,6 +645,26 @@ class Feature(HasLocation):
         if not isinstance(item, str):
             raise TypeError(item)
         return next((v for k, v in self.qualifiers if k == item), None)
+
+    def __format__(self, __format_spec: Literal['fasta', 'ffn', 'fna', 'faa', 'bed', 'tsv'] = ''):
+        if __format_spec == '':
+            return self.__str__()
+        elif __format_spec in {'fasta', 'ffn', 'fna'}:
+            if self.seq is None:
+                raise AttributeError(f'No seq extracted for {self=}')
+            else:
+                return f">{self.id}\n{self.seq}\n"
+        elif __format_spec == 'faa':
+            return f">{self.id}\n{self.translate()}\n"
+        elif __format_spec == 'bed':
+            return (f'{self.location.start}\t{self.location.end}\t{self.id}\t'
+                    f'{next((v for k, v in self.qualifiers if k == "score"), 0)}\t'
+                    f'{"+" if self.location.strand == 1 else "-"}\n')
+        elif __format_spec == 'tsv':
+            return f'{self}\t{self.kind}\t{self.location:tsv}'
+            # return f'{self}\t{self.location:tsv}'
+        else:
+            raise NotImplementedError(f'Format "{__format_spec}" not supported')
 
     @classmethod
     def random(cls, parent: Record, id_: str = None, rng: Random = RESOURCES.rng, min_len: int = 1,
@@ -694,22 +706,14 @@ class Feature(HasLocation):
                 self.qualifiers.append(Qualifier('translation', translation))
         return translation
 
-    def __format__(self, __format_spec: Literal['fasta', 'ffn', 'fna', 'faa', 'bed'] = ''):
-        if __format_spec == '':
-            return self.__str__()
-        elif __format_spec in {'fasta', 'ffn', 'fna'}:
-            if self.seq is None:
+    def GC(self) -> float:
+        """Returns the GC content of the feature"""
+        if not (gc := next((v for k, v in self.qualifiers if k == 'GC'), None)):
+            if not self.seq:
                 raise AttributeError(f'No seq extracted for {self=}')
-            else:
-                return f">{self.id}\n{self.seq}\n"
-        elif __format_spec == 'faa':
-            return f">{self.id}\n{self.translate()}\n"
-        elif __format_spec == 'bed':
-            return (f'{self.location.start}\t{self.location.end}\t{self.id}\t'
-                    f'{next((v for k, v in self.qualifiers if k == "score"), 0)}\t'
-                    f'{"+" if self.location.strand == 1 else "-"}\n')
-        else:
-            raise NotImplementedError(f'Format "{__format_spec}" not supported')
+            gc = self.seq.GC()
+            self.qualifiers.append(Qualifier('GC', gc))
+        return gc
 
     def extract(self, parent: Union[Union['Seq', 'Record', 'Feature'], dict[str, Union['Seq', 'Record', 'Feature']]],
                 store_seq: bool = False) -> 'Seq':
@@ -721,91 +725,8 @@ class Feature(HasLocation):
     def shift(self, by: int) -> 'Feature':
         return Feature(self.location.shift(by), self.id, self.kind, None, self.qualifiers)
 
-
-class Cluster:
-    """
-    Represents a cluster of genes as ``Feature`` objects
-
-    """
-    def __init__(self, id_: str = 'unknown', description: str = 'unknown', *members: Feature):
-        self.id = id_
-        self.description = description
-        self._members = {i for i in members}
-
-    def __len__(self):
-        return len(self._members)
-
-    def __repr__(self):
-        return f"Cluster({self.id} - {self.description} - {len(self._members)} members)"
-
-    def __str__(self):
-        return self.id
-
-    def __iter__(self):
-        return iter(self._members)
-
-    def __hash__(self) -> int:
-        return hash(self.id)
-
-    def __eq__(self, other):
-        if isinstance(other, Cluster):
-            return self._members == other._members
-        return False
-
-    def add(self, other: Any):
-        self._members.add(other)
-
-    def __format__(self, __format_spec: Literal['tsv'] = ''):
-        if __format_spec == '':
-            return self.__str__()
-        elif __format_spec == 'tsv':
-            return ''.join(f"{self.id}\t{i}\n" for i in self._members)
-        else:
-            raise NotImplementedError(f'Format "{__format_spec}" not supported')
-
-
-# Functions ------------------------------------------------------------------------------------------------------------
-def merge_locations(
-        locations: Iterable[Union[Location, HasLocation]], tolerance: Union[int, float, None] = None
-) -> Generator[Location, None, None]:
-    """
-    Merges a list of locations into a single location, possibly with a tolerance
-
-    :param locations: Iterable of locations or objects wth a location to merge
-    :param tolerance: Tolerance for merging locations or None to merge all locations
-    :return: A generator of merged locations
-
-    """
-    if not locations:
-        return None
-
-    locations = sorted((i.location if isinstance(i, HasLocation) else i for i in locations), key=attrgetter('start'))
-    if len(locations) == 1:
-        yield from locations
-        return None
-
-    if tolerance is None:  # Merge locations regardless
-        starts, ends, strands = [], [], []
-        for i in locations:
-            starts.append(i.start); ends.append(i.end); strands.append(i.strand)
-        yield Location(min(starts), max(ends), max(set(strands), key=strands.count))
-
-    else:  # Merge locations within tolerance
-        current_location = locations[0]  # Start with first location
-        strands = [current_location.strand]  # Collect strands to calculate consensus
-        # TODO: Think about how to deal with locations with joins
-        # TODO: Also think about how to deal with refs
-        for start, end, strand in locations[1:]:  # Iterate through the locations and unpack
-            if start - tolerance <= current_location.end:  # Overlap, merge the locations
-                current_location = Location(
-                    current_location.start, max(current_location.end, end), current_location.strand
-                )
-                strands.append(strand)
-            else:  # No overlap, add the current location to the merged list and start a new location
-                current_location.strand = max(set(strands), key=strands.count)
-                yield current_location  # Yield the current location
-                current_location = Location(start, end, strand)  # Start a new location
-                strands = [current_location.strand]
-
-        current_location.strand = max(set(strands), key=strands.count)
-        yield current_location  # Yield the last location
+    def reverse_complement(self, parent_length: int) -> 'Feature':
+        return Feature(
+            self.location.reverse_complement(parent_length), self.id, self.kind,
+            self.seq.reverse_complement() if self.seq else None, self.qualifiers
+        )

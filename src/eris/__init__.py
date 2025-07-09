@@ -14,6 +14,7 @@ from typing import Iterable
 from warnings import warn
 import functools
 from importlib import import_module
+from importlib.resources import files
 
 # Classes --------------------------------------------------------------------------------------------------------------
 class Resources:
@@ -25,6 +26,7 @@ class Resources:
         rng: A random number generator instance.
     """
     def __init__(self):
+        self.data = files('eris') / 'data'
         try:
             from os import process_cpu_count as cpu_count
         except ImportError:

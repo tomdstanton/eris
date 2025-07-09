@@ -17,7 +17,7 @@ from operator import attrgetter
 from re import compile
 
 from eris import ErisWarning, RESOURCES
-from eris.seq import HasLocation, Location, Seq, Feature, Record
+from eris.seq import HasLocation, Location, Seq, Feature, Record, Qualifier
 
 # Constants ------------------------------------------------------------------------------------------------------------
 _CIGAR_OPERATIONS = compile(r'(?P<n>[0-9]+)(?P<operation>[MIDNSHP=X])')
@@ -51,7 +51,8 @@ class Alignment(HasLocation):
     def __init__(self, query: str, query_start: int, query_end: int, target: str, location: Location,
                  query_length: int = 0, target_length: int = 0, length: int = 0, cigar: str = None,
                  n_matches: int = 0, quality: int = 0, tags: dict = None, score: float = 0, E: float = 0,
-                 query_coverage: float = 0, target_coverage: float = 0, aligned_seqs: tuple[Seq, Seq] = None):
+                 identity: float = 0,  query_coverage: float = 0, target_coverage: float = 0,
+                 aligned_seqs: tuple[Seq, Seq] = None):
         super().__init__(location)
         self.query = query  # Query sequence name
         self.query_length = query_length  # Query sequence length
@@ -66,6 +67,7 @@ class Alignment(HasLocation):
         self.n_matches = n_matches  # Number of matching residues in the alignment
         self.quality = quality  # Mapping quality (0-255 with 255 for missing)
         self.tags = tags or {}  # {tag: value} pairs):
+        self.identity = identity
         self.query_coverage = query_coverage
         self.target_coverage = target_coverage
         self.aligned_seqs = aligned_seqs
@@ -95,8 +97,9 @@ class Alignment(HasLocation):
                     t in paf_line[12:]
                 }
             )
-            self.query_coverage = self.query_length / self.length  # TODO: Exclude gaps from these counts
-            self.target_coverage = self.target_length / self.length  # TODO: Exclude gaps from these counts
+            self.identity = (self.n_matches / self.length) * 100
+            self.query_coverage = (self.length / self.query_length) * 100  # TODO: Exclude gaps from these counts
+            self.target_coverage = (self.length / self.target_length) * 100  # TODO: Exclude gaps from these counts
             if 'cg' in self.tags:  # Add cigar to attributes
                 self.cigar = self.tags.pop('cg')
             if 'AS' in self.tags:  # Add alignment score to attributes
@@ -174,6 +177,27 @@ class Alignment(HasLocation):
                   f"       {i:>{rjust}} {matches[i:i + wrap]}\n"
                   f"query  {self.query_start + i:>{rjust}} {query[i:i + wrap]}")
 
+    def as_feature(self, kind: str = 'misc_feature') -> Feature:
+        return Feature(
+            location=self.location, id_=f"{self.query}|{self.target}|{self.location}", kind=kind,
+            qualifiers=[
+                Qualifier('name', self.query),
+                Qualifier('query_start', self.query_start),
+                Qualifier('query_end', self.query_end),
+                Qualifier('query_length', self.query_length),
+                Qualifier('query_coverage', self.query_coverage),
+                Qualifier('target_length', self.target_length),
+                Qualifier('target_coverage', self.target_coverage),
+                Qualifier('identity', self.identity),
+                Qualifier('length', self.length),
+                Qualifier('cigar', self.cigar),
+                Qualifier('n_matches', self.n_matches),
+                Qualifier('quality', self.quality),
+                Qualifier('score', self.score),
+                Qualifier('E', self.E)
+            ]
+        )
+
 
 # Functions ------------------------------------------------------------------------------------------------------------
 def group_alignments(alignments: Iterable[Alignment], key: str = 'query'
@@ -248,31 +272,3 @@ def cull_all(alignments: Iterable[Alignment], key='n_matches', reverse_sort: boo
         sorted_alignments = list(cull(kept_alignments[-1], sorted_alignments))
     return kept_alignments
 
-
-def cull_filtered(predicate: Callable, alignments: Iterable[Alignment]) -> Generator[Alignment, None, None]:
-    """
-    This function filters and processes a collection of alignments by applying a predicate to classify
-    them into two groups: those to keep and those to discard. Conflicting alignments are resolved, and
-    overlaps with the best match gene alignments are removed before yielding the final filtered results.
-
-    Args:
-        predicate (Callable): A function that takes an Alignment object and returns a boolean to
-            determine whether the alignment is kept or discarded.
-        alignments (Iterable[Alignment]): A collection of alignments to be processed and filtered.
-
-    Yields:
-        Alignment: The filtered alignments, in sequence, that pass the predicate and do not overlap
-            with the highest-priority gene alignments.
-
-    Raises:
-        None
-    """
-    keep, other = [], []
-    for alignment in alignments:
-        (keep if predicate(alignment) else other).append(alignment)
-
-    other = cull_all(other)  # Remove conflicting other alignments
-    for alignment in keep:  # Remove other alignments overlapping best match gene alignments
-        other = list(cull(alignment, other))
-        yield alignment
-    yield from other

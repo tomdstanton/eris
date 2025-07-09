@@ -28,12 +28,6 @@ _MAGIC_BYTES = {b'\x1f\x8b': 'gz', b'\x42\x5a': 'bz2', b'\xfd7zXZ\x00': 'xz'}
 _OPEN = {'gz': gz_open, 'bz2': bz2_open, 'xz': xz_open}
 _DECOMPRESS = {'gz': gz_decompress, 'bz2': bz2_decompress, 'xz': xz_decompress}
 _MIN_N_BYTES = max(len(i) for i in _MAGIC_BYTES)  # Minimum number of bytes to read in a file to guess the compression
-_LOGO = r"""  _  __    _    ____ _____ _____     _______ 
- | |/ /   / \  |  _ \_   _|_ _\ \   / / ____|
- | ' /   / _ \ | |_) || |  | | \ \ / /|  _|  
- | . \  / ___ \|  __/ | |  | |  \ V / | |___ 
- |_|\_\/_/   \_\_|    |_| |___|  \_/  |_____|                                   
-"""
 if DEPENDENCIES.is_available('zstandard'):
     from zstandard import (open as zst_open, decompress as zst_decompress)
     _MAGIC_BYTES[b'\x28\xb5\x2f\xfd'] = 'zst'
@@ -250,7 +244,7 @@ def bold(text: str):
     return f"\033[1m{text}\033[0m"
 
 
-def get_logo(message: str, width: int = 43) -> str:  # 43 is the width of the logo
+def get_logo(message: str, width: int = 58) -> str:  # 43 is the width of the logo
     """
     Returns the eris logo with a message centered below it.
 
@@ -258,4 +252,4 @@ def get_logo(message: str, width: int = 43) -> str:  # 43 is the width of the lo
     :param width: Width of the logo.
     :return: Formatted logo string.
     """
-    return f"\033[1;35m{_LOGO}\n{message.center(width)}\033[0m"
+    return f"\033[1;35m========================|> eris |>========================\n{message.center(width)}\033[0m"

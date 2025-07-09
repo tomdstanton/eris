@@ -18,29 +18,16 @@ The repetitive nature of IS elements make them notoriously
 
 ### What it does
 1. Takes bacterial assemblies in FASTA, GFA or GenBank format.
+1. 
 1. Finds IS elements.
 1. Predicts the effect each IS element is having.
 
 ### How it does it
 - If assembly graphs are supplied,
-
 
 
 ### Interpreting the results
-The main output is tabular, however, 
-
-
-
-## `insert`
-<img src="https://i.kym-cdn.com/entries/icons/original/000/041/943/1aa1blank.png" width="150">
-
-### What it does
-1. Takes bacterial assemblies in FASTA, GFA or GenBank format.
-1. Finds IS elements.
-1. Predicts the effect each IS element is having.
-
-### How it does it
-- If assembly graphs are supplied,
+The main output is tabular, however,
 
 ### Outputs
 **All** sequence based outputs are 
@@ -48,25 +35,3 @@ The main output is tabular, however,
 IS elements with no nucleotide alignments to the IS database, but with HMM domain hits are suffixed with
 'novel', in case you wish to submit them later.
 
-## `remove`
-<img src="https://freepngimg.com/thumb/walter_white/134277-white-walter-free-transparent-image-hq.png" width="100">
-
-### What it does
-1. Takes bacterial assemblies in FASTA, GFA or GenBank format.
-1. Finds IS elements.
-1. Predicts the effect each IS element is having.
-
-### How it does it
-- If assembly graphs are supplied,
-
-## Notes
-Classes are built on top of Biopython's `SeqRecord` and `SeqFeature` objects
-to allow the seamless conversion of results between different biological
-text formats.
-
-## Collaborate!
-If there is an IS that hasn't been detected, please let us know so we
-can develop better detection methods!
-
-Similarly, if there is an IS-related event that would be good to
-detect and report, please reach out!

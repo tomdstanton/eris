@@ -10,22 +10,46 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
 details. You should have received a copy of the GNU General Public License along with eris.
 If not, see <https://www.gnu.org/licenses/>.
 """
-from operator import itemgetter, attrgetter
 from pathlib import Path
-from tempfile import NamedTemporaryFile, TemporaryDirectory
+from tempfile import NamedTemporaryFile
 from typing import Iterable, Generator, Union, Literal
 from subprocess import Popen, PIPE, DEVNULL
 from dataclasses import dataclass, asdict
 from warnings import warn
 
-from eris import ErisWarning, RESOURCES
-from eris.seq import Record, Feature, Cluster, Location
+from eris import RESOURCES
+from eris.seq import Record, Feature
 from eris.io import SeqFile, ReadSet
 from eris.utils import Config, find_executable_binaries, is_non_empty_file
 from eris.alignment import Alignment
 
 
 # Classes --------------------------------------------------------------------------------------------------------------
+class ExternalProgramError(Exception):
+    pass
+
+class ExternalProgram:
+    """
+    Base class to handle an external program to be executed in subprocesses
+    """
+    def __init__(self, program: str):
+        if (binary := next(find_executable_binaries(program))) is None:
+            raise ExternalProgramError(f'Could not find {program}')
+        self._program = program
+        self._binary = binary
+        
+    def __repr__(self):
+        return f'{self._program}({self._binary})'
+        
+    def __enter__(self):
+        return self
+
+    def _run(self, command, input_: str = None, stdout: bool = True):
+        with Popen(f"{self._binary} {command}", shell=True, stderr=PIPE, stdin=PIPE if input_ else DEVNULL,
+                   stdout=PIPE if stdout else DEVNULL, universal_newlines=True) as process:
+            return process.communicate(input=input_)  
+
+
 @dataclass
 class Minimap2IndexConfig(Config):
     t: int = RESOURCES.available_cpus  # Number of threads [3]
@@ -83,11 +107,11 @@ class Minimap2AlignConfig(Config):
         return config
 
 
-class Minimap2Error(Exception):
+class Minimap2Error(ExternalProgramError):
     pass
 
 
-class Minimap2:
+class Minimap2(ExternalProgram):
     """
     An aligner instance using Minimap2. The class can be instantiated with targets which will create a temporary
     index file, that can be handled safely with context management.
@@ -95,23 +119,18 @@ class Minimap2:
     Example:
         >>> from eris.external import Minimap2
         ... from eris.io import Genome
-        ... with Minimap2(targets=Genome.from_file('test.fasta')) as aligner:  # Build the index from genome 1
+        ... with Minimap2(targets=Genome.from_file('tests.fasta')) as aligner:  # Build the index from genome 1
         ...     for alignment in aligner(Genome.from_file('test2.gfa')):
         ...         print(alignment)
     """
     def __init__(self, targets: Union[str, Path, Union[Record, Feature], Iterable[Union[Record, Feature]]] = None,
                  align_config: Minimap2AlignConfig = None, index_config: Minimap2IndexConfig = None):
-        if (binary := next(find_executable_binaries('minimap2'))) is None:
-            raise Minimap2Error('Could not find minimap2')
-        self._binary: str = binary
+        super().__init__('minimap2')
         self._target_index: Path = None
         self._align_config: Minimap2AlignConfig = align_config or Minimap2AlignConfig()
         self._index_config: Minimap2IndexConfig = index_config or Minimap2IndexConfig()
         if targets:
             self.build_index(targets)
-
-    def __enter__(self):
-        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanup()
@@ -121,11 +140,6 @@ class Minimap2:
 
     def __call__(self, *args, **kwargs):
         return self.align(*args, **kwargs)
-
-    def _run(self, command, input_: str = None, stdout: bool = True):
-        with Popen(f"{self._binary} {command}", shell=True, stderr=PIPE, stdin=PIPE if input_ else DEVNULL,
-                   stdout=PIPE if stdout else DEVNULL, universal_newlines=True) as process:
-            return process.communicate(input=input_)
 
     def cleanup(self):
         """
@@ -235,6 +249,11 @@ class Minimap2:
         for line in stdout.splitlines():
             yield Alignment.from_sam(line) if config.a else Alignment.from_paf(line)
 
+
+# class FragGeneScanRs:
+#     """To use as a potential alternative to pyrodigal/prodigal - it is faster and works on reads"""
+#     def __init__(self):
+#         super().__init__('FragGeneScanRs')
 
 
 # Functions ------------------------------------------------------------------------------------------------------------

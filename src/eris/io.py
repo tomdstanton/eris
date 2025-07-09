@@ -16,27 +16,34 @@ from warnings import warn
 from re import compile
 from pathlib import Path
 from typing import Union, Generator, IO, Literal, Iterable, TextIO, get_args, Callable
-from concurrent.futures import Executor
+from concurrent.futures import Executor, ThreadPoolExecutor
 from itertools import chain, groupby
-from io import BufferedIOBase, RawIOBase, BytesIO
+from io import BufferedIOBase, RawIOBase
 from shutil import copyfileobj
 from tempfile import NamedTemporaryFile
 from random import Random
 from uuid import uuid4
+from dataclasses import dataclass, asdict
 
 from eris import ErisWarning, Requires, RESOURCES
 from eris.alphabet import DNA
 from eris.seq import Record, Feature, Seq, Qualifier, Location
 from eris.graph import Graph, Edge
-from eris.utils import xopen
+from eris.utils import xopen, Config
 
 # Constants ------------------------------------------------------------------------------------------------------------
 _SUPPORTED_FORMATS = Literal['fasta', 'gfa', 'genbank', 'fastq', 'bed']
 _TAG2TYPE = {'f': float, 'i': int, 'Z' : str}  # See: https://github.com/GFA-spec/GFA-spec/blob/master/GFA1.md#optional-fields
 _FEATURE_KINDS = {'CDS'}  # 'gene', 'misc_feature', 'ncRNA', 'rRNA', 'regulatory', 'tRNA', 'tmRNA'}
 _SEQUENCE_FILE_REGEX = compile(
-    r'\.((?P<fasta>f(asta|a|na|fn|as|aa))|(?P<fastq>f(ast)?q)|(?P<gfa>gfa)|(?P<genbank>g(b|bff|bk|enbank))|(?P<bed>bed))'
-    r'\.?(?P<compression>(gz|bz2|xz|zst))?$'
+    r'\.('
+    r'(?P<fasta>f(asta|a|na|fn|as|aa))|'
+    r'(?P<fastq>f(ast)?q)|'
+    r'(?P<gfa>gfa)|'
+    r'(?P<genbank>g(b|bff|bk|enbank))|'
+    r'(?P<gff>gff(3)?)|'
+    r'(?P<bed>bed)'
+    r')\.?(?P<compression>(gz|bz2|xz|zst))?$'
 )
 # Regex for Illumina BaseSpace read files as specified here:
 # https://support.illumina.com/help/BaseSpace_Sequence_Hub_OLH_009008_2/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm
@@ -48,6 +55,18 @@ _TOPOLOGY_REGEX = compile(r'(?i)(\bcircular\b|\bcircular\s*=\s*true\b)')
 _GENBANK_LOCATION_REGEX = compile(r'(?P<partial_start><)?(?P<start>[0-9]+)\.\.(?P<partial_end>>)?(?P<end>[0-9]+)')
 
 # Classes --------------------------------------------------------------------------------------------------------------
+@dataclass
+class GeneFinderConfig(Config):
+    meta: bool = False
+    closed: bool = False
+    mask: bool = False
+    min_mask: int = 50
+    min_gene: int = 90
+    min_edge_gene: int = 60
+    max_overlap: int = 60
+    backend: str = "detect"
+
+
 class ParserWarning(ErisWarning):
     pass
 
@@ -166,7 +185,7 @@ class SeqFile:
         self.close()
         # Next call to read() or __iter__() will automatically reopen via _ensure_handle_open()
 
-    def __iter__(self) -> Generator[Union['Record', 'Edge'], None, None]:
+    def __iter__(self) -> Generator[Union['Record', 'Edge', 'Feature'], None, None]:
         """Returns an iterator (generator) over records in the file."""
         self._ensure_handle_open() # Ensure handle is open/reopened
         if not self._format:
@@ -294,13 +313,21 @@ class GenomeError(Exception):
     pass
 
 class Genome:
-    """A class representing a single genome assembly with contigs and edges"""
+    """
+    A class representing a single genome assembly in memory with contigs and potentially edges
+
+    Attributes:
+        id: The ID of the genome.
+        contigs: A dictionary of contig IDs as keys and Record objects as values.
+        edges: A list of Edges connecting the contigs.
+        is_annotated: True if the genome has been loaded with annotations (e.g. from Genbank / GFF / BED).
+    """
     def __init__(self, id_: str, contigs: dict[str: 'Record'] = None, edges: list[Edge] = None):
         """Represents a single bacterial genome to be loaded into memory from a file"""
         self.id: str = id_
         self.contigs: dict[str: 'Record'] = contigs or {}
         self.edges: list[Edge] = edges or []
-        self._is_annotated: bool = False
+        self.is_annotated: bool = False
 
     def __len__(self):
         return sum(len(i) for i in self.contigs.values())
@@ -326,8 +353,14 @@ class Genome:
 
     @classmethod
     def from_file(cls, file: Union[str, Path, SeqFile], annotations: Union[str, Path, SeqFile] = None):
+        """
+        Loads a genome from a file with optional annotations, e.g. a FASTA with a BED/GFF file.
+        :param file: Path to file (str/Path) or a SeqFile instance.
+        :param annotations: Optional annotations as a file path (str/Path) or SeqFile instance.
+        :return: A Genome instance representing the genome in memory
+        """
         file = SeqFile(file) if not isinstance(file, SeqFile) else file
-        self = cls()
+        self = cls(file.id)
         for record in file:
             if isinstance(record, Record):
                 self.contigs[record.id] = record
@@ -337,16 +370,28 @@ class Genome:
                     # We assume a GFA file already has this edge but this may not be the case
             elif isinstance(record, Edge):
                 self.edges.append(record)
+        if annotations:
+            if file.format not in {'fasta', 'gfa'}:
+                raise GenomeError(f'Can only provide annotations to FASTA and GFA files, not {file.format}')
+            annotations = SeqFile(annotations) if not isinstance(annotations, SeqFile) else annotations
+            if not annotations.format in {'gff', 'bed'}:
+                raise GenomeError(f'Annotations must be in GFF or BED format, not {annotations.format}')
+            for contig_id, features in groupby(sorted(annotations, key=attrgetter('location.parent_id')), key=attrgetter('location.parent_id')):
+                if contig := self.contigs.get(contig_id):  # type: Record
+                    contig.add_features(features)
+                    self.is_annotated = True
         return self
 
     @classmethod
     def random(
-            cls, genome: Record = None, rng: Random = RESOURCES.rng, n_contigs: int = None, min_contigs: int = 1,
-            max_contigs: int = 1000, gc: float = 0.5, length: int = None, min_len: int = 10, max_len: int = 5000000
+            cls, id_: str = None, genome: Record = None, rng: Random = RESOURCES.rng, n_contigs: int = None,
+            min_contigs: int = 1, max_contigs: int = 1000, gc: float = 0.5, length: int = None, min_len: int = 10,
+            max_len: int = 5000000
     ):
         """
         Generates a random genome assembly for testing purposes.
 
+        :param id_: ID of the genome, if not provided a random one will be generated
         :param genome: Initial genome record; if not provided a random one will be generated
         :param rng: Random number generator.
         :param n_contigs: Number of contigs in the assembly. If not provided, a random number of contigs will be generated.
@@ -360,62 +405,105 @@ class Genome:
         """
         n_contigs = n_contigs or rng.randint(min_contigs, max_contigs)
         genome = genome or Record.random(None, DNA, rng, gc, length, min_len, max_len)
-        return cls(BytesIO(''.join(format(i, 'fasta') for i in genome.shred(rng, n_contigs)).encode()), 'fasta')
+        return cls(id_ or str(uuid4()), {i.id: i for i in genome.shred(rng, n_contigs)})
 
     def as_assembly_graph(self, directed: bool = False) -> Graph:
         """
         Returns the assembly as a graph where contigs are nodes
         """
-        graph = Graph(*self.edges, directed=directed)
-        for i in self.contigs:
-            graph.add_node(i)
-        return graph
+        return Graph(*self.edges, directed=directed)
 
-    # def as_feature_graph(self, directed: bool = False) -> Graph:
-    #     """
-    #     Returns the assembly as a graph where features are nodes
-    #     Adjacent features are connected to one another by an edge, if the Genome has edges connecting contigs,
-    #     features that are on the termini of connected contigs will also be connected to each other.
-    #     """
-    #     edges = []
-    #     for contig in self.contigs.values():
-    #         for n, to in enumerate(contig.features[1:], start=1):
-    #             edges.append(
-    #                 Edge((fr := contig.features[n - 1]).name, to.name, fr.location.strand,
-    #                      to.location.strand, to.location.start - fr.location.end)
-    #             )
-    #     for edge in self.edges:
-    #         if (fr_contig := self.contigs.get(edge.fr)) and (to_contig := self.contigs.get(edge.to)):
-    #             # TODO: Calculate distance between features across different contigs for weight
-    #             # TODO: Deal with multiple locations
-    #             edges.append(
-    #                 Edge((fr := fr_contig.features[-1 if edge.fr_attribute == 1 else 0]).name,
-    #                      (to := to_contig.features[0 if edge.to_attribute == 1 else -1]).name,
-    #                      fr.location.strand, to.location.strand)
-    #             )
-    #     return Graph(*edges, directed=directed)
+    def as_feature_graph(self, directed: bool = False) -> Graph:
+        """
+        Returns the assembly as a graph where features are nodes.
+        Adjacent features on the same contig are connected. Features at the termini
+        of connected contigs are also connected.
+        """
+        feature_graph = Graph(directed=directed)
+
+        # 1. Add intra-contig edges (connecting adjacent features on the same contig)
+        for contig in self.contigs.values():
+            if contig.features:
+                # This assumes contig.as_edge_list() correctly connects adjacent features
+                for edge in contig.as_edge_list():
+                    feature_graph.add_edge(edge)
+
+        # 2. Add inter-contig edges by iterating through all assembly connections
+        for edge in self.as_assembly_graph(directed=directed).edges:
+            # Get the original 'from' and 'to' contigs for this edge
+            fr_contig_orig, to_contig_orig = self.contigs.get(edge.fr), self.contigs.get(edge.to)
+
+            # Skip if either contig is missing or has no features
+            if not (fr_contig_orig and fr_contig_orig.features) or not (to_contig_orig and to_contig_orig.features):
+                continue
+
+            # Determine the correct orientation based on the assembly edge attributes
+            fr_contig = fr_contig_orig.reverse_complement() if edge.fr_attribute == -1 else fr_contig_orig
+            to_contig = to_contig_orig.reverse_complement() if edge.to_attribute == -1 else to_contig_orig
+
+            # Identify the terminal features on the correctly oriented contigs
+            fr_feature = fr_contig.features[-1]  # The last feature on the 'from' contig
+            to_feature = to_contig.features[0]  # The first feature on the 'to' contig
+
+            # Calculate the gap distance between the features
+            distance = (len(fr_contig) - fr_feature.location.end) + to_feature.location.start
+
+            feature_graph.add_edge(  # Add the new edge connecting the two features
+                Edge(
+                    fr_feature.id,
+                    to_feature.id,
+                    fr_feature.location.strand,
+                    to_feature.location.strand,
+                    distance
+                )
+            )
+
+        return feature_graph
 
     @Requires(requires='pyrodigal')
-    def find_genes(self, gene_finder: 'GeneFinder', pool: Executor) -> Generator[Feature, None, None]:
+    def find_genes(self, gene_finder: 'GeneFinder' = None, pool: Executor = None, config: GeneFinderConfig = None
+                   ) -> Generator[Feature, None, None]:
+        """
+        Predicts ORFs in the Genome using Pyrodigal
+        """
         from pyrodigal import __version__ as _pyrodigal_version
-        if not gene_finder.training_info:
+        from pyrodigal import Gene
+
+        if gene_finder is None:
+            from pyrodigal import GeneFinder
+            gene_finder = GeneFinder(**asdict(config or GeneFinderConfig()))
+
+        if pool is None:
+            pool = ThreadPoolExecutor(max_workers=min(32, RESOURCES.available_cpus + 4))
+
+        if gene_finder.training_info is None:
             gene_finder.train(*(bytes(contig.seq) for contig in self.contigs.values()))
-        n = 0
+
+        n = 0  # Gene counter
         for contig, genes in zip(self.contigs.values(), pool.map(lambda contig: gene_finder.find_genes(bytes(contig.seq)), self.contigs.values())):
-            for gene in genes:
-                contig.features.append(cds := Feature(
-                    id_=f'{contig.name}_{n + 1:05d}', kind='CDS', seq=Seq(gene.sequence(), 'DNA'),
-                    location=Location(gene.begin - 1, gene.end, gene.strand, gene.partial_begin, gene.partial_end),
+            features = []
+            for gene in genes:  # type: Gene
+                features.append(cds := Feature(
+                    id_=f'{contig.id}_{n + 1:05d}', kind='CDS', seq=Seq(gene.sequence(), 'DNA'),
+                    location=Location(gene.begin - 1, gene.end, gene.strand, gene.partial_begin, gene.partial_end,
+                                      contig.id),
                     qualifiers=[
                         Qualifier('translation', Seq(gene.translate(), 'Amino')),
                         Qualifier('transl_table', gene.translation_table),
-                        Qualifier('inference', f'ab initio prediction:Pyrodigal:{_pyrodigal_version}')
+                        Qualifier('inference', f'ab initio prediction:Pyrodigal:{_pyrodigal_version}'),
+                        Qualifier('GC', gene.gc_cont),
+                        Qualifier('rbs_motif', gene.rbs_motif),
+                        Qualifier('rbs_spacer', gene.rbs_spacer)
                     ]
                 ))
-                n += 1
-                yield cds
+                n += 1  # Increment the counter
+                yield cds  # Yield the CDS for potential use
 
-        self._is_annotated = True
+            contig.add_features(*features)  # Use the add_features method to sort with existing features
+
+        if n > 0:  # If genes were found, mark the genome as annotated
+            self.is_annotated = True
+
 
 # Functions ------------------------------------------------------------------------------------------------------------
 def parse(handle: TextIO, format_: _SUPPORTED_FORMATS = 'guess') -> Generator[Union[Record, Edge], None, None]:
@@ -534,6 +622,17 @@ def _parse_bed(handle: TextIO) -> Generator[Feature, None, None]:
     #         raise ValueError(f"Expected {bed_format} BED columns, but got {n_columns}")
     #
     #     location = Location(int(line[1]), int(line[2]), -1 if (bed_format > 3 and line[5] == '-') else 1, ref=line[0])
+
+
+def _parse_gff(handle: TextIO) -> Generator[Feature, None, None]:
+    """
+    Simple GFF3 parser
+
+    :param handle: A file handle opened in text-mode / text stream
+    :returns: A Generator of Feature objects
+    """
+    raise NotImplementedError
+    # TODO: Implement this
 
 
 def _parse_genbank(handle: TextIO, feature_kinds: set[str] = frozenset({'CDS'})) -> Generator[Record, None, None]:
