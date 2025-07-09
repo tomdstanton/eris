@@ -1,5 +1,5 @@
-# insta :camera::next_track_button::dna:
-Annotate IS elements and interrupted genes in bacterial genomes
+# eris
+Uncovering IS-mediated discord in bacterial genomes
 
 
 ## Background
@@ -18,41 +18,7 @@ The repetitive nature of IS elements make them notoriously
 
 ### What it does
 1. Takes bacterial assemblies in FASTA, GFA or GenBank format.
-1. 
-1. Finds IS elements.
-1. Predicts the effect each IS element is having.
-
-### How it does it
-- If assembly graphs are supplied,
-
-### Interpreting the results
-
-Genome
-IS_element
-Context
-Feature
-Type
-Contig
-Start
-End
-Strand
-Partial_start
-Partial_end
-Translation_start
-Translation_end
-Percent_identity
-Percent_coverage
-Name
-Family
-Group
-Synonyms
-Origin
-IR
-DR
-
-### Outputs
-**All** sequence based outputs are 
-
-IS elements with no nucleotide alignments to the IS database, but with HMM domain hits are suffixed with
-'novel', in case you wish to submit them later.
+1. Finds IS elements with Minimap2.
+1. Predicts ORFs if needed
+1. Quantifies the relative relationship between each IS element and flanking/overlappign ORFs.
 
