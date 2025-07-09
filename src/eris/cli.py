@@ -49,7 +49,7 @@ def main():
         metavar='<genomes>', nargs='+'
     )
     scan_parser.add_argument_group(bold('Outputs'), "\nNote, text outputs accept '-' for stdout")
-    scan_parser.add_argument('--tsv', metavar='', default='-',
+    scan_parser.add_argument('--tsv', metavar='', default=stdout,
                       help='Path to output tabular results (default: stdout)')
     scan_parser.add_argument('--no-tsv-header', action='store_true',
                              help='Suppress header in TSV output')

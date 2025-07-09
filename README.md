@@ -25,9 +25,30 @@ The repetitive nature of IS elements make them notoriously
 ### How it does it
 - If assembly graphs are supplied,
 
-
 ### Interpreting the results
-The main output is tabular, however,
+
+Genome
+IS_element
+Context
+Feature
+Type
+Contig
+Start
+End
+Strand
+Partial_start
+Partial_end
+Translation_start
+Translation_end
+Percent_identity
+Percent_coverage
+Name
+Family
+Group
+Synonyms
+Origin
+IR
+DR
 
 ### Outputs
 **All** sequence based outputs are 
