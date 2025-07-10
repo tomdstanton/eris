@@ -10,12 +10,15 @@ environments:
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-h99b78c6_7.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2025.6.15-hbd8a1cb_0.conda
+      - conda: https://conda.anaconda.org/bioconda/osx-arm64/k8-1.2-hda5e58c_6.tar.bz2
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libcxx-20.1.8-ha82da77_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libexpat-2.7.0-h286801f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libffi-3.4.6-h1da3d7d_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/liblzma-5.8.1-h39f12f2_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libmpdec-4.0.0-h5505292_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libsqlite-3.50.2-h6fb428d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libzlib-1.3.1-h8359307_2.conda
+      - conda: https://conda.anaconda.org/bioconda/osx-arm64/minimap2-2.30-hba9b596_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h5e97a16_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.5.1-h81ee809_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pixi-pycharm-0.0.8-unix_hf108a03_2.conda
@@ -55,11 +58,32 @@ packages:
 - pypi: ./
   name: eris
   version: 0.0.1a0
-  sha256: 837c0f350aad9bc68bf0cc38b907904ccfee229a3d1b113040af3008732c9846
+  sha256: 4fca632e9a9e5978158160251a4a9442e6d9d30c6a43b94747e15402f7150d7e
   requires_dist:
   - pyrodigal
-  requires_python: '>=3.11'
+  requires_python: '>=3.9'
   editable: true
+- conda: https://conda.anaconda.org/bioconda/osx-arm64/k8-1.2-hda5e58c_6.tar.bz2
+  sha256: 71a5f0bcdb892760556b741fcba8b52d9824a414097cc5e877f36e89b093e3c0
+  md5: 7564d9ace7ab6eed5f972bf2a799b166
+  depends:
+  - libcxx >=18
+  - libzlib >=1.3.1,<2.0a0
+  license: MIT
+  license_family: MIT
+  purls: []
+  size: 8068855
+  timestamp: 1748940155242
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libcxx-20.1.8-ha82da77_0.conda
+  sha256: 3d7fd77e37794c28e99812da03de645b8e1ddefa876d9400c4d552b9eb8dd880
+  md5: 149bb93ede144e7c86bf5f88378ae5f6
+  depends:
+  - __osx >=11.0
+  license: Apache-2.0 WITH LLVM-exception
+  license_family: Apache
+  purls: []
+  size: 567309
+  timestamp: 1752050056857
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libexpat-2.7.0-h286801f_0.conda
   sha256: ee550e44765a7bbcb2a0216c063dcd53ac914a7be5386dd0554bd06e6be61840
   md5: 6934bbb74380e045741eb8637641a65b
@@ -125,6 +149,17 @@ packages:
   purls: []
   size: 46438
   timestamp: 1727963202283
+- conda: https://conda.anaconda.org/bioconda/osx-arm64/minimap2-2.30-hba9b596_0.tar.bz2
+  sha256: cdb32f97fa222a0113dea48dab8a3b0bc251f270f1140733f9ba59be981c6404
+  md5: 227f3a61a8a0df309eff38a5635640a0
+  depends:
+  - k8
+  - libzlib >=1.3.1,<2.0a0
+  license: MIT
+  license_family: MIT
+  purls: []
+  size: 493142
+  timestamp: 1750027275243
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h5e97a16_3.conda
   sha256: 2827ada40e8d9ca69a153a45f7fd14f32b2ead7045d3bbb5d10964898fe65733
   md5: 068d497125e4bf8a66bf707254fff5ae

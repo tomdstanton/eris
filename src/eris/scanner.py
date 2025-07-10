@@ -241,7 +241,7 @@ class Scanner:
         contigs_with_is = []
         with Minimap2(targets=genome, index_config=self.index_config) as aligner:  # Align IS to contigs
             for contig, alignments in group_alignments(aligner.align(self.db, config=self.align_config), 'target'):
-                genome[contig].add_features(*(i.as_feature('is_element') for i in cull_all(alignments)))
+                genome[contig].add_features(*(i.as_feature('mobile_element') for i in cull_all(alignments)))
                 contigs_with_is.append(contig)  # Add contig name to list, also indicator that we have alignments
 
         if not contigs_with_is:  # No alignments found, warn and exit early
@@ -257,7 +257,7 @@ class Scanner:
 
         for contig in contigs_with_is:  # Iterate over contigs with IS element alignments
             for feature in (contig := genome[contig]):  # type: Feature
-                if feature.kind == 'is_element':  # This is an IS element, let's see if it overlaps any ORFs
+                if feature.kind == 'mobile_element':  # This is an IS element, let's see if it overlaps any ORFs
                     feature.qualifiers += self.db[feature['name']].qualifiers  # Pull over the qualifiers from the database
                     result.insertion_sequences.append(is_element := InsertionSequence(genome.id, feature, contig))
                     # This block performs a graph traversal (BFS) starting from the neighbors of the IS element

@@ -2,15 +2,15 @@
 authors = [{name = "Tom Stanton", email = "tomdstanton@gmail.com"}]
 name = "eris"
 description = "Uncovering IS-mediated discord in bacterial genomes"
-requires-python = ">= 3.11"
+requires-python = ">= 3.9"
 version = "0.0.1-alpha"
 dependencies = ["pyrodigal"]
 
 [project.urls]
-Documentation = "https://readthedocs.org"
-Repository = "https://github.com/me/spam.git"
-Issues = "https://github.com/me/spam/issues"
-Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+Documentation = "https://eris.readthedocs.org"
+Repository = "https://github.com/tomdstanton/eris.git"
+Issues = "https://github.com/tomdstanton/eris/issues"
+Changelog = "https://github.com/tomdstanton/eris/blob/master/CHANGELOG.md"
 
 [project.scripts]
 eris = "eris.cli:main"
@@ -30,4 +30,5 @@ eris = { path = ".", editable = true }
 
 [tool.pixi.dependencies]
 pixi-pycharm = ">=0.0.8,<0.0.9"
+minimap2 = ">=2.30,<3"
 #frag_gene_scan_rs = ">=1.1.0,<2"
