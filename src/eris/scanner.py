@@ -10,12 +10,13 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
 details. You should have received a copy of the GNU General Public License along with eris.
 If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Literal, Union, Generator
+from typing import Literal, Union, Generator, IO
 from warnings import warn
 from concurrent.futures import Executor, ThreadPoolExecutor
 from pathlib import Path
 from dataclasses import asdict
 from collections import deque
+from itertools import chain
 
 from eris import ErisWarning, Requires, RESOURCES
 from eris.db import Database
@@ -45,8 +46,6 @@ class InsertionSequence:
     def __init__(self, genome_id: str, feature: Feature, contig: Record):
         self.genome_id = genome_id
         self.feature: Feature = feature
-        # # self.contig_gc: float = contig.seq.GC()
-        # self.contg_copy_number: float = next((v for k, v in contig.qualifiers if k == 'dp'), 0)
         self.CDS_in_element: set[Feature] = set()
         self.CDS_flanking_element: set[Feature] = set()
         self.edges: set[Edge] = set()
@@ -63,6 +62,12 @@ class InsertionSequence:
     def __format__(self, __format_spec: Literal['tsv'] = '') -> str:
         if __format_spec == '':
             return self.__str__()
+        elif __format_spec in {'fna', 'bed'}:
+            return ''.join(
+                format(i, __format_spec) for i in chain([self.feature], self.CDS_in_element, self.CDS_flanking_element))
+        elif __format_spec == 'faa':
+            return ''.join(
+                format(i, __format_spec) for i in chain(self.CDS_in_element, self.CDS_flanking_element))
         elif __format_spec == 'tsv':
             results = [
                 f'{self.genome_id}\t{self.feature.id}\tAlignment\t{self.feature:tsv}\t'
@@ -173,7 +178,7 @@ class Scanner:
     def __call__(self, *args, **kwargs):
         return self._pipeline(*args, **kwargs)
 
-    def scan(self, *genomes: Union[str, Path, SeqFile, Genome]) -> Generator[ScannerResult, None, None]:
+    def scan(self, *genomes: Union[str, Path, IO, SeqFile, Genome]) -> Generator[ScannerResult, None, None]:
         """
         Runs the pipeline on input genomes
 
@@ -185,7 +190,7 @@ class Scanner:
         """
         yield from map(self._pipeline, genomes)
 
-    def _pipeline(self, genome: Union[str, Path, SeqFile, Genome]) -> Union[ScannerResult, None]:
+    def _pipeline(self, genome: Union[str, Path, IO, SeqFile, Genome]) -> Union[ScannerResult, None]:
         if not isinstance(genome, Genome):
             try:
                 genome = Genome.from_file(genome)

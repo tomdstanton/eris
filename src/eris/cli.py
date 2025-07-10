@@ -15,7 +15,7 @@ from argparse import RawTextHelpFormatter, RawDescriptionHelpFormatter, Argument
 # from importlib.metadata import metadata
 from os import fstat
 from io import IOBase
-from sys import stdout, stderr
+from sys import stdout, stderr, stdin
 from pathlib import Path
 import time
 
@@ -197,11 +197,14 @@ def scan_parser(subparsers):
         'scan', description=get_logo('Scan for IS in bacterial genomes'),
         epilog=f'For more help, visit: {bold('eris.readthedocs.io')}',
         add_help=False, formatter_class=RawTextHelpFormatter,
-        help='Scan for IS in bacterial genomes', usage="%(prog)s <genomes> [options]"
+        help='Scan for IS in bacterial genomes', usage="%(prog)s <genome> <genome...> [options]"
     )
     inputs = parser.add_argument_group(bold('Inputs'), '')
-    inputs.add_argument('genomes', help='Genomes in FASTA, GFA or Genbank format', nargs='+')
-    outputs = parser.add_argument_group(bold('Outputs'), "\nNote, text outputs accept '-' for stdout")
+    inputs.add_argument(
+        'genome', nargs='*', default=[stdin],
+        help='Genome(s) in FASTA, GFA or Genbank format. If not provided, reads from stdin.'
+   )
+    outputs = parser.add_argument_group(bold('Outputs'), "")
     outputs.add_argument(
         '--tsv', metavar='', default=stdout, help='Path to output tabular results (default: stdout)'
     )
@@ -241,5 +244,5 @@ def main():
                 no_tsv_header=args.no_tsv_header
             ) as writer
         ):
-            for result in ProgressBar(args.genomes, scanner, "Scanning genomes"):
+            for result in ProgressBar(args.genome, scanner, "Scanning genomes"):
                 writer.write(result)

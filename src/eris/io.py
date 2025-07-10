@@ -83,7 +83,8 @@ class SeqFile:
     Class for handling a (possibly compressed) file or stream of biological formats.
 
     :param file: Path to file (str/Path) or an IO stream (binary or text).
-    :param format_: Format of the file (required if input is a stream).
+    :param format_: Format of the file. If None, the format will be guessed from the
+                    filename extension or the stream content.
     :return: A SeqFile instance
     """
     def __init__(self, file: Union[str, Path, IO], format_: _SUPPORTED_FORMATS = None):
@@ -95,33 +96,54 @@ class SeqFile:
         self._open_func: Union[None, Callable] = None
 
         if hasattr(file, 'read') and not isinstance(file, (str, Path)):  # --- Handle IO Stream Input ---
-            if format_ is None:
-                raise SeqFileError('Input format must be specified when providing an IO stream.')
-
             if not isinstance(file, (BufferedIOBase, RawIOBase)):
-                # Try to get underlying binary buffer (common for TextIOBase like sys.stdin)
                 if buffer := getattr(file, 'buffer', None):
-                    file = buffer  # Use the buffer instead
-                else:  # It's some other kind of stream we can't easily get bytes from
+                    file = buffer
+                else:
                     raise SeqFileError("Input stream is not binary and lacks an accessible binary buffer (.buffer).")
 
-            with NamedTemporaryFile(prefix='seqfile_', suffix=f'.{self._format}', delete=False, mode='wb') as temp_f_handle:
-                copyfileobj(file, temp_f_handle)  # Dump raw bytes from input stream to temp file
-                self.path = Path(temp_f_handle.name)  # Store path to the temp file (which contains raw/compressed data)
+            # The existing, clever solution: dump the stream to a temp file to make it seekable.
+            with NamedTemporaryFile(prefix='seqfile_', suffix='.tmp', delete=False, mode='wb') as temp_f_handle:
+                copyfileobj(file, temp_f_handle)
+                self.path = Path(temp_f_handle.name)
                 self.id = self.path.stem
                 self._from_stream = True
-                self._open_func = partial(xopen, self.path, method='magic', mode='rt')
+
+            # Now, we can safely open and guess from the temp file.
+            if self._format is None:
+                try:
+                    # xopen handles decompression automatically based on magic numbers
+                    with xopen(self.path, mode='rt') as f:
+                        self._format = _guess_format_from_handle(f)
+                except Exception as e:
+                    # Clean up the temp file on failure
+                    self.path.unlink(missing_ok=True)
+                    raise e
+
+            # The suffix for the temp file doesn't matter since we use xopen's 'magic' method
+            self._open_func = partial(xopen, self.path, method='magic', mode='rt')
 
         elif isinstance(file, (str, Path)):  # --- Handle File Path Input ---
             self.path = file if isinstance(file, Path) else Path(file)
             if m := _SEQUENCE_FILE_REGEX.search(self.path.name):
                 self.id = self.path.name.rstrip(m.group())
-                self._format = next(fmt for fmt in get_args(_SUPPORTED_FORMATS) if m[fmt])
+                # If format is not provided, guess from extension.
+                self._format = format_ or next(fmt for fmt in get_args(_SUPPORTED_FORMATS) if m[fmt])
                 self._open_func = partial(xopen, self.path, method=m['compression'] or 'uncompressed', mode='rt')
             else:
-                raise SeqFileError(f'Unsupported SeqFile format or extension: {self.path.suffixes}')
+                # If no valid extension, try guessing from content
+                if self._format is None:
+                    try:
+                        with xopen(self.path, mode='rt') as f:
+                            self._format = _guess_format_from_handle(f)
+                        self._open_func = partial(xopen, self.path, method='magic', mode='rt')
+                    except Exception as e:
+                         raise SeqFileError(f'Unsupported file extension and could not guess format for: {self.path.name}') from e
+                else: # Format was provided, but extension is weird. Trust the user.
+                    self._open_func = partial(xopen, self.path, method='magic', mode='rt')
         else:
             raise TypeError(f"Input must be a file path (str or Path) or an IO stream, not {type(file)}")
+
 
     @property
     def format(self):
@@ -352,7 +374,7 @@ class Genome:
             raise NotImplementedError(f'Invalid format: {__format_spec}')
 
     @classmethod
-    def from_file(cls, file: Union[str, Path, SeqFile], annotations: Union[str, Path, SeqFile] = None):
+    def from_file(cls, file: Union[str, Path, IO, SeqFile], annotations: Union[str, Path, SeqFile] = None):
         """
         Loads a genome from a file with optional annotations, e.g. a FASTA with a BED/GFF file.
         :param file: Path to file (str/Path) or a SeqFile instance.
@@ -506,6 +528,46 @@ class Genome:
 
 
 # Functions ------------------------------------------------------------------------------------------------------------
+def _guess_format_from_handle(handle: TextIO) -> _SUPPORTED_FORMATS:
+    """
+    Guesses the file format by peeking at the first line of a text handle.
+    Assumes the handle is seekable.
+    """
+    try:
+        first_line = handle.readline().strip()
+        handle.seek(0)  # Rewind the handle for the actual parser
+
+        if not first_line:
+            raise SeqFileError("Cannot guess format from an empty file.")
+
+        if first_line.startswith('>'):
+            return 'fasta'
+        elif first_line.startswith('@'):
+            return 'fastq'
+        elif first_line.startswith('LOCUS'):
+            return 'genbank'
+        elif first_line.startswith('S\t'):
+            return 'gfa'
+        # Basic check for BED/GFF. This could be more robust.
+        # BED files have at least 3 tab-separated columns.
+        elif len(first_line.split('\t')) >= 3:
+            # This is ambiguous between BED and GFF.
+            # GFF often has a "##gff-version" header, but not always.
+            # For now, let's add a placeholder or a basic guess.
+            # A more robust check would be needed for GFF vs BED.
+            # For this example, we'll assume BED if it's not GFF.
+            if "gff-version" in first_line:
+                 return 'gff'
+            # Let's assume BED for now, but this is a weak check.
+            # You might want to prioritize one or raise an error for ambiguity.
+            return 'bed'
+        else:
+            raise SeqFileError(f"Could not guess file format from first line: '{first_line[:100]}...'")
+
+    except Exception as e:
+        raise SeqFileError("Failed to read from stream to guess format.") from e
+
+
 def parse(handle: TextIO, format_: _SUPPORTED_FORMATS = 'guess') -> Generator[Union[Record, Edge], None, None]:
     """
     Simple parser for fasta, gfa and genbank formats,
