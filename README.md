@@ -37,6 +37,25 @@ The information below explains how to use the `eris` CLI. For API usage, please 
 #### Quickstart
 `eris scan *.{fasta,gfa,gb} > results.tsv`
 
+#### Arguments
+```shell
+Inputs:
+
+  genomes          Genomes in FASTA, GFA or Genbank format
+
+Outputs:
+  
+  Note, text outputs accept '-' for stdout
+
+  --tsv            Path to output tabular results (default: stdout)
+  --no-tsv-header  Suppress header in TSV output
+
+Other options:
+
+  -v, --version    Show version number and exit
+  -h, --help       Show this help message and exit
+```
+
 #### The algorithm 
 - Given a bacterial genome as an assembly (FASTA), assembly-graph (GFA) or annotation file (Genbank), the `scan` pipeline
 will align IS element nucleotide sequences from the ISFinder database against the assembly contigs using minimap2.

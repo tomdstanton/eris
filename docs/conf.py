@@ -9,7 +9,6 @@
 import datetime
 import os
 import re
-import semantic_version
 
 # -- Path setup --------------------------------------------------------------
 

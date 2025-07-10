@@ -10,9 +10,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
 details. You should have received a copy of the GNU General Public License along with eris.
 If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Literal, Union, IO
-from os import fstat
-from io import IOBase
+from typing import Literal, Union, Generator
 from warnings import warn
 from concurrent.futures import Executor, ThreadPoolExecutor
 from pathlib import Path
@@ -27,6 +25,11 @@ from eris.alignment import cull_all, group_alignments
 from eris.external import Minimap2, Minimap2AlignConfig, Minimap2IndexConfig
 from eris.graph import Edge
 
+
+# Constants ------------------------------------------------------------------------------------------------------------
+TSV_HEADER = ('Genome\tIS_element\tContext\tFeature\tType\tContig\tStart\tEnd\tStrand\tPartial_start\t'
+                                 'Partial_end\tTranslation_start\tTranslation_end\tPercent_identity\tPercent_coverage\t'
+                                 'Name\tFamily\tGroup\tSynonyms\tOrigin\tIR\tDR\n')
 
 # Classes --------------------------------------------------------------------------------------------------------------
 class InsertionSequence:
@@ -119,76 +122,21 @@ class ScannerWarning(ErisWarning):
 class ScannerError(Exception):
     pass
 
-class ScannerResultWriter:
-    def __init__(
-                self,
-                tsv: Union[str, Path, IO] = None, bed: Union[str, Path, IO] = None, gfa: Union[str, Path, IO] = None,
-                fna: Union[str, Path, IO] = None, ffn: Union[str, Path, IO] = None, faa: Union[str, Path, IO] = None,
-                png: Union[str, Path, IO] = None, suffix: str = '_eris_results', no_tsv_header: bool = False
-        ):
-        self._files = {}
-        self._handles = {}
-        self._suffix: str = suffix
-        self._tsv_header: str = ('Genome\tIS_element\tContext\tFeature\tType\tContig\tStart\tEnd\tStrand\tPartial_start\t'
-                                 'Partial_end\tTranslation_start\tTranslation_end\tPercent_identity\tPercent_coverage\t'
-                                 'Name\tFamily\tGroup\tSynonyms\tOrigin\tIR\tDR\n')
-        self._no_tsv_header: bool = no_tsv_header
-        self._results_written: int = 0
-        for k, v in (('tsv', tsv), ('bed', bed), ('gfa', gfa), ('fna', fna), ('ffn', ffn), ('faa', faa),
-                     ('png', png)):
-            if v is not None:
-                if isinstance(v, str):
-                    self._files[k] = Path(v)
-                elif isinstance(v, Path):
-                    self._files[k] = v
-                elif isinstance(v, IOBase):
-                    self._handles[k] = v
-                else:
-                    raise TypeError(f"Argument {k} must be a string, Path or IO, not {type(v)}")
-
-    def __len__(self):
-        return self._results_written
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    def __del__(self):
-        self.close()
-
-    def open(self, *args, **kwargs):
-        """Opens the handles that aren't stdout or stderr"""
-        for handle in self._handles.values():
-            if handle.name not in {'<stdout>', '<stderr>'}:
-                handle.open(*args, **kwargs)
-
-    def close(self):
-        """Close the handles that aren't stdout or stderr"""
-        for handle in self._handles.values():
-            if handle.name not in {'<stdout>', '<stderr>'}:
-                handle.close()
-
-    def write(self, result: Union[ScannerResult, None]):
-        """Write the typing result to files or file handles."""
-        if result is None:
-            return None
-
-        for fmt, file in self._files.items():  # Write to the file outputs
-            with open(file / f'{result.genome_id}{self._suffix}.{fmt}', 'wt') as handle:
-                handle.write(format(result, fmt))
-
-        for fmt, handle in self._handles.items():  # Write to the handle outputs
-            # Logic for non-repeating TSV header, this limits TSV to a handle but should be the case
-            if fmt == 'tsv' and not self._no_tsv_header and self._results_written == 0:
-                handle.write(self._tsv_header)
-            handle.write(format(result, fmt))
-
-        self._results_written += 1  # Incremment the counter
-
 
 class Scanner:
+    """
+    A class that runs the eris scan pipeline on bacterial genomes. The scan pipeline takes a single bacterial genome,
+    predicts ORFs if necessary, and uses Minimap2 to find IS elements with nucleotide-nucleotide alignment against
+    contigs. Then, ORFs belonging to- or flanked by- the IS elements are identified
+    (including potential graph traversal), and are returned in a result object for later reporting.
+
+    Attributes:
+        db: The ISFinder sequence Database object
+        align_config: Minimap2 alignment configuration
+        index_config: Minimap2 index configuration
+        gene_finder_config: Configuration for the pyrodigal GeneFinder instance if needed
+        pool: A thread or process pool executor instance if needed
+    """
     def __init__(self, align_config: Minimap2AlignConfig = None, index_config: Minimap2IndexConfig = None,
                  gene_finder_config: GeneFinderConfig = None, pool: Executor = None):
         self.db = Database()
@@ -222,16 +170,22 @@ class Scanner:
     def __del__(self):
         self.cleanup()
 
-    def __call__(self, *genomes: Genome):
+    def __call__(self, *args, **kwargs):
+        return self._pipeline(*args, **kwargs)
+
+    def scan(self, *genomes: Union[str, Path, SeqFile, Genome]) -> Generator[ScannerResult, None, None]:
+        """
+        Runs the pipeline on input genomes
+
+        Arguments:
+            genomes: Input genomes to scan, can be strings or Paths to files, SeqFile instances or Genome instances
+
+        Yields:
+            ScannerResult instances for each genome processed or None
+        """
         yield from map(self._pipeline, genomes)
 
     def _pipeline(self, genome: Union[str, Path, SeqFile, Genome]) -> Union[ScannerResult, None]:
-        """
-        The scanner pipeline takes a single bacterial genome, predicts ORFs if necessary, and uses Minimap2 to find IS
-        elements with nucleotide-nucleotide alignment against contigs. Then, ORFs belonging to- or flanked by- the IS
-        elements are identified (including potential graph traversal), and are returned in a result object for later
-        reporting.
-        """
         if not isinstance(genome, Genome):
             try:
                 genome = Genome.from_file(genome)
