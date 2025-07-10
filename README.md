@@ -74,7 +74,7 @@ the element.
 
 #### Performance 
 `eris scan` is very fast, especially when providing annotations or once the `pyrodigal.GeneFinder` instance has been
-trained (this occurs on the first input genome); it should only take a few seconds per assembly 🚀
+trained (this occurs on the first input genome); it should only take <1 second per assembly 🚀
 
 ### Outputs
 
