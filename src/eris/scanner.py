@@ -208,7 +208,8 @@ class Scanner:
 
         if not genome.is_annotated:  # Get ORFs if neccessary, only do this if we have alignments to exit early
             genes = {gene.id: gene for gene in genome.find_genes(self.gene_finder, self.pool)}
-        else:
+        else:  # Get the existing annotations from the genome
+            # TODO: Should we support other feature types?
             genes = {gene.id: gene for contig in genome.contigs.values() for gene in contig.features if gene.kind == 'CDS'}
 
         graph = genome.as_feature_graph()  # Get the gene graph for traversing connected genes

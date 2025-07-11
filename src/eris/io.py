@@ -24,6 +24,7 @@ from tempfile import NamedTemporaryFile
 from random import Random
 from uuid import uuid4
 from dataclasses import dataclass, asdict
+from sys import stdin
 
 from eris import ErisWarning, Requires, RESOURCES
 from eris.alphabet import DNA
@@ -87,13 +88,16 @@ class SeqFile:
                     filename extension or the stream content.
     :return: A SeqFile instance
     """
-    def __init__(self, file: Union[str, Path, IO], format_: _SUPPORTED_FORMATS = None):
+    def __init__(self, file: Union[str, Path, IO], format_: _SUPPORTED_FORMATS = None, temp_prefix='seqfile_'):
         self.id: str = "unknown"
         self.path: Union[Path, None] = None
+        self.format: Union[str, None] = format_
         self._handle: Union[IO, None] = None
         self._from_stream: bool = False
-        self._format: Union[str, None] = format_
         self._open_func: Union[None, Callable] = None
+
+        if file == '-':  # Handle stdin symbol, the rest of the logic should deal with the stream
+            file = stdin
 
         if hasattr(file, 'read') and not isinstance(file, (str, Path)):  # --- Handle IO Stream Input ---
             if not isinstance(file, (BufferedIOBase, RawIOBase)):
@@ -103,18 +107,18 @@ class SeqFile:
                     raise SeqFileError("Input stream is not binary and lacks an accessible binary buffer (.buffer).")
 
             # The existing, clever solution: dump the stream to a temp file to make it seekable.
-            with NamedTemporaryFile(prefix='seqfile_', suffix='.tmp', delete=False, mode='wb') as temp_f_handle:
+            with NamedTemporaryFile(prefix=temp_prefix, suffix='.tmp', delete=False, mode='wb') as temp_f_handle:
                 copyfileobj(file, temp_f_handle)
                 self.path = Path(temp_f_handle.name)
                 self.id = self.path.stem
                 self._from_stream = True
 
             # Now, we can safely open and guess from the temp file.
-            if self._format is None:
+            if self.format is None:
                 try:
                     # xopen handles decompression automatically based on magic numbers
                     with xopen(self.path, mode='rt') as f:
-                        self._format = _guess_format_from_handle(f)
+                        self.format = _guess_format_from_handle(f)
                 except Exception as e:
                     # Clean up the temp file on failure
                     self.path.unlink(missing_ok=True)
@@ -128,14 +132,14 @@ class SeqFile:
             if m := _SEQUENCE_FILE_REGEX.search(self.path.name):
                 self.id = self.path.name.rstrip(m.group())
                 # If format is not provided, guess from extension.
-                self._format = format_ or next(fmt for fmt in get_args(_SUPPORTED_FORMATS) if m[fmt])
+                self.format = format_ or next(fmt for fmt in get_args(_SUPPORTED_FORMATS) if m[fmt])
                 self._open_func = partial(xopen, self.path, method=m['compression'] or 'uncompressed', mode='rt')
             else:
                 # If no valid extension, try guessing from content
-                if self._format is None:
+                if self.format is None:
                     try:
                         with xopen(self.path, mode='rt') as f:
-                            self._format = _guess_format_from_handle(f)
+                            self.format = _guess_format_from_handle(f)
                         self._open_func = partial(xopen, self.path, method='magic', mode='rt')
                     except Exception as e:
                          raise SeqFileError(f'Unsupported file extension and could not guess format for: {self.path.name}') from e
@@ -144,13 +148,8 @@ class SeqFile:
         else:
             raise TypeError(f"Input must be a file path (str or Path) or an IO stream, not {type(file)}")
 
-
-    @property
-    def format(self):
-        return self._format
-
     def __repr__(self):
-        return f'SeqFile({self.id}, format={self._format})'
+        return f'SeqFile({self.id}, format={self.format})'
 
     def __str__(self):
         return self.id
@@ -210,9 +209,9 @@ class SeqFile:
     def __iter__(self) -> Generator[Union['Record', 'Edge', 'Feature'], None, None]:
         """Returns an iterator (generator) over records in the file."""
         self._ensure_handle_open() # Ensure handle is open/reopened
-        if not self._format:
+        if not self.format:
              raise SeqFileError("Cannot parse file: format is unknown.")
-        yield from parse(self._handle, self._format)
+        yield from parse(self._handle, self.format)
         # Note: Iteration consumes the handle. Re-iteration requires rewind()/re-opening.
 
     def peek(self) -> str:
@@ -295,8 +294,8 @@ class ReadSet:
     Whilst still representing genomes, these are different from Genome instances as they will not hold
     sequence information in memory and may consist of multiple files.
     """
-    def __init__(self, *files: Union[str, Path, ReadFile]):
-        self.id = None
+    def __init__(self, *files: Union[str, Path, ReadFile], id_: str = None):
+        self.id = id_
         self._files = []
         read_types = set()
         for file in files:
@@ -832,12 +831,70 @@ def _parse_tags(line: str, col_delim: str = '\t', tag_delimiter: str = ':'
             yield Qualifier(tag, _TAG2TYPE.get(typ, str)(val))
 
 
-def group_reads(reads: Iterable[Union[Path, str, ReadFile]]) -> Generator[ReadSet, None, None]:
+def group_genomes(genomes: Iterable[Union[Path, str, IO, SeqFile]]) -> Generator[Genome, None, None]:
     """
-    Groups reads by sample name
+    Helper function, mostly for CLI, for grouping together sequence and annotation files for the same genome.
+    Useful for adding annotations in BED/GFF format to a genome in FASTA/GFA format.
 
-    E.g. to load in ReadSets from a directory of reads, use: `group_reads(Path('reads').iterdir())`
+    Note:
+        Whilst this function can accept input streams, everything is coerced into SeqFiles instances and will be
+        written to disk, so this should be taken into consideration before processing many streams.
+
+    Arguments:
+        genomes: An iterable of files as strings or Path objects, SeqFiles or IO streams.
+
+    Yields:
+        Genome instances
+
+    Example:
+        >>> from pathlib import Path
+        >>> for genome in group_genomes(Path('genomes').iterdir()):
+        >>>     print(f'{genome:fasta}', end='')
+
     """
-    for _, readset in groupby(sorted(((ReadFile(i) if not isinstance(i, ReadFile) else i) for i in reads),
+    for id_, files in groupby(sorted(((SeqFile(i) if not isinstance(i, SeqFile) else i) for i in genomes),
+                                     key=attrgetter('id')), key=attrgetter('id')):
+
+        if len(files := list(files)) > 2:
+            raise GenomeError(f'More than 2 files found for {id_}: {files}')
+        seq_formats, annotation_formats = [], []
+        for file in files:
+            if file.format in {'fasta', 'gfa', 'genbank'}:
+                seq_formats.append(file)
+            elif file.format in {'bed', 'gff'}:
+                annotation_formats.append(file)
+                
+        if (n_seqfiles := len(seq_formats)) != 1:
+            raise GenomeError(f'{n_seqfiles} sequence files found for {id_}: {seq_formats}')
+        
+        if len(seq_formats) == 1 and len(annotation_formats) == 0:
+            yield Genome.from_file(seq_formats[0])
+        
+        if len(seq_formats) == 1 and len(annotation_formats) == 1:
+            yield Genome.from_file(seq_formats[0], annotations=annotation_formats[0])
+
+
+def group_reads(reads: Iterable[Union[Path, str, IO, ReadFile]]) -> Generator[ReadSet, None, None]:
+    """
+    Helper function, mostly for CLI, for grouping together read files for the same sample.
+    Useful for grouping paired-end or hybrid (long + short) readsets.
+
+    Note:
+        Whilst this function can accept input streams, everything is coerced into ReadFile instances and will be
+        written to disk, so this should be taken into consideration before processing many streams.
+
+    Arguments:
+        reads: An iterable of files as strings or Path objects, ReadFile or IO streams.
+
+    Yields:
+        ReadSet instances
+
+    Example:
+        >>> from pathlib import Path
+        >>> for readset in group_reads(Path('reads').iterdir()):
+        >>>     print(f'{readset:fasta}', end='')
+
+    """
+    for sample_name, files in groupby(sorted(((ReadFile(i) if not isinstance(i, ReadFile) else i) for i in reads),
                                      key=attrgetter('sample_name')), key=attrgetter('sample_name')):
-        yield ReadSet(*readset)
+        yield ReadSet(*files, id_=sample_name)
