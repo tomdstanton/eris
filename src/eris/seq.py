@@ -16,7 +16,7 @@ from copy import copy
 from random import Random
 from uuid import uuid4
 
-from eris import Requires, RESOURCES
+from eris import RESOURCES
 from eris.alphabet import Alphabet, DNA, _DNA
 from eris.graph import Edge, GraphError
 

@@ -10,73 +10,98 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
 details. You should have received a copy of the GNU General Public License along with eris.
 If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Iterable, Callable, Any, Union, IO
+from itertools import chain
+from typing import Iterable, Callable, Any, Union, IO, Dict
 from argparse import RawTextHelpFormatter, RawDescriptionHelpFormatter, ArgumentParser
-# from importlib.metadata import metadata
 from os import fstat
 from io import IOBase
 from sys import stdout, stderr, stdin
 from pathlib import Path
 import time
+# from threading import Lock
+from concurrent.futures import Executor, ThreadPoolExecutor
 
+from eris import RESOURCES
 from eris.io import SeqFile, Genome
-from eris.utils import bold, get_logo
-
-
-# Constants ------------------------------------------------------------------------------------------------------------
-# _PACKAGE = Path(__file__).parent.name
-_PACKAGE = 'eris'
-# _METADATA = metadata(_PACKAGE)
-# _VERSION = _METADATA.json['version']
-
+from eris.utils import bold, get_logo, write_to_file_or_directory
 
 # Classes --------------------------------------------------------------------------------------------------------------
 class ResultWriter:
     """
     A class to handle the writing of results to multiple types of files; to be used with the CLI.
     """
-    def __init__(self, outputs: tuple[tuple[str, Union[str, Path, IO]]], suffix: str = '_eris_results',
-                 no_tsv_header: bool = False, tsv_header: str = '#'):
+    def __init__(self, *outputs: tuple[str, Union[str, Path, IO]], suffix: str = '_eris_results',
+                 no_tsv_header: bool = False, tsv_header: str = '#', pool: Executor = None):
         """
         :param suffix: Suffix to append to output filenames (default: _eris_results)
         :param no_tsv_header: Suppress header in TSV output (default: False)
         """
-        self.files = {}
-        self.handles = {}
-        self._suffix: str = suffix
+        self._files = {}
+        self._handles = {}
+        self.suffix: str = suffix
         self.tsv_header: str = tsv_header
-        self.header_written: bool = no_tsv_header
+        self._header_written: bool = no_tsv_header
         for format, argument in outputs:
             if argument is not None:
-                if isinstance(argument, str):
-                    self.files[format] = Path(argument)
+                if argument in {'-', 'stdout'}:
+                    self._handles[format] = stdout
+                    # self._handle_locks[format] = Lock()
+                elif isinstance(argument, str):
+                    self._files[format] = Path(argument)
                 elif isinstance(argument, Path):
-                    self.files[format] = argument
+                    self._files[format] = argument
                 elif isinstance(argument, IOBase):
-                    self.handles[format] = argument
+                    self._handles[format] = argument
+                    # self._handle_locks[format] = Lock()
                 else:
                     raise TypeError(f"{format=} {argument=} must be a string, Path or IO, not {type(argument)}")
+
+        if not self._files and not self._handles:
+            raise ValueError("No outputs specified")
+
+        # self.pool: Executor = pool or ThreadPoolExecutor(
+        #     min(len(self._files) + len(self._handles), RESOURCES.available_cpus + 4)
+        # )
+
+    def __len__(self):
+        return len(self._files) + len(self._handles)
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+        # Wait for all writes to finish before exiting context
+        # self.pool.shutdown(wait=True)
 
     def __del__(self):
         self.close()
-
-    def open(self, *args, **kwargs):
-        """Opens the handles that aren't stdout or stderr"""
-        for handle in self.handles.values():
-            if handle.name not in {'<stdout>', '<stderr>'}:
-                handle.open(*args, **kwargs)
+        # Avoid __del__ for resource management; __exit__ is preferred. If it is called, try to clean up.
+        # self.pool.shutdown(wait=False)
 
     def close(self):
         """Close the handles that aren't stdout or stderr"""
-        for handle in self.handles.values():
-            if handle.name not in {'<stdout>', '<stderr>'}:
+        for handle in self._handles.values():
+            if handle.name not in {'<stdout>', '<stderr>'}:  # These handles cannot be opened or closed
                 handle.close()
+
+    def _write(self, fmt: str, out: Union[str, Path, IOBase], result, open_mode: str) -> int:
+        if fmt in self._handles:
+            # Acquire lock for the specific handle to ensure thread-safe writing
+            # with self._handle_locks[out]:
+            #     # Logic for non-repeating TSV header
+            #     if fmt == 'tsv' and not self._header_written:
+            #         out.write(self.tsv_header)
+            #         self._header_written = True
+            #     out.write(format(result, fmt))
+            # Logic for non-repeating TSV header
+            if fmt == 'tsv' and not self._header_written:
+                out.write(self.tsv_header)
+                self._header_written = True
+            return out.write(format(result, fmt))
+        else:  # This logic is for self.files
+            with open(out / f'{result.genome_id}{self.suffix}.{fmt}', mode=open_mode) as handle:
+                return handle.write(format(result, fmt))
 
     def write(self, result: Union['Result', None], open_mode: str = 'wt'):
         """
@@ -85,17 +110,11 @@ class ResultWriter:
         """
         if result is None:
             return None
-
-        for fmt, file in self.files.items():  # Write to the file outputs
-            with open(file / f'{result.genome_id}{self._suffix}.{fmt}', mode=open_mode) as handle:
-                handle.write(format(result, fmt))
-
-        for fmt, handle in self.handles.items():  # Write to the handle outputs
-            # Logic for non-repeating TSV header, this limits TSV to a handle but should be the case
-            if fmt == 'tsv' and not self.header_written:
-                handle.write(self.tsv_header)
-                self.header_written = True
-            handle.write(format(result, fmt))
+        # Use the pool to write the result, iterating over the handles and files dictionaries
+        # for fmt, out in chain(self._handles.items(), self._files.items()):
+        #     self.pool.submit(self._write, result, fmt, out, open_mode)
+        for fmt, out in chain(self._handles.items(), self._files.items()):
+            self._write(fmt, out, result, open_mode)
 
 
 class ProgressBar:
@@ -201,12 +220,25 @@ def scan_parser(subparsers):
     )
     inputs = parser.add_argument_group(bold('Inputs'), '')
     inputs.add_argument(
-        'genome', nargs='*', default=[stdin],
-        help='Genome(s) in FASTA, GFA or Genbank format. If not provided, reads from stdin.'
+        'genome', nargs='*', default=[stdin], metavar='<genome>',
+        help='Genome(s) in FASTA, GFA or Genbank format.\nIf not provided, reads from stdin.'
    )
-    outputs = parser.add_argument_group(bold('Outputs'), "")
+    outputs = parser.add_argument_group(
+        bold('Outputs'),
+        '\nNote, text outputs accept "-" or "stdout" for stdout'
+        '\nIf a directory is passed, individual files will be written per input genome'
+    )
     outputs.add_argument(
-        '--tsv', metavar='', default=stdout, help='Path to output tabular results (default: stdout)'
+        '--tsv', metavar='', default=stdout, help='Path to output tabular results (default: stdout)', nargs='?',
+        type=write_to_file_or_directory
+    )
+    outputs.add_argument(
+        '--ffn', metavar='', help='Path to output feature DNA sequences in FASTA format',
+        const='.', nargs='?', type=write_to_file_or_directory
+    )
+    outputs.add_argument(
+        '--faa', metavar='', help='Path to output feature Amino acid sequences in FASTA format',
+        const='.', nargs='?', type=write_to_file_or_directory
     )
     outputs.add_argument('--no-tsv-header', action='store_true', help='Suppress header in TSV output')
     opts = parser.add_argument_group(bold('Other options'), '')
@@ -218,14 +250,11 @@ def scan_parser(subparsers):
 def main():
     parser = ArgumentParser(
         description=get_logo('Uncovering IS-mediated discord in bacterial genomes'),
-        usage="%(prog)s <command>",
-        add_help=False,
-        prog=_PACKAGE,
-        formatter_class=RawDescriptionHelpFormatter,
-        epilog=f'For more help, visit: {bold("eris.readthedocs.io")}'
+        usage="%(prog)s <command>", add_help=False, prog=RESOURCES.package, formatter_class=RawDescriptionHelpFormatter,
+        epilog=f'For more help, visit: {bold("%(prog)s.readthedocs.io")}'
     )
     subparsers = parser.add_subparsers(
-        title=bold('Command'), dest='command', prog=_PACKAGE, metavar='<command>', help=None, required=True
+        title=bold('Command'), dest='command', metavar='<command>', required=True, help=None,
     )
     scan_parser(subparsers)
     opts = parser.add_argument_group(bold('Other options'), '')
@@ -236,10 +265,16 @@ def main():
 
     if args.command == 'scan':
         from eris.scanner import Scanner, TSV_HEADER
+        writer = ResultWriter(
+            ('tsv', args.tsv), ('faa', args.faa), ('ffn', args.ffn),
+            tsv_header=TSV_HEADER,
+            no_tsv_header=args.no_tsv_header
+        )
+
         with (
             Scanner() as scanner,
             ResultWriter(
-                outputs=(('tsv', args.tsv),),
+                ('tsv', args.tsv),
                 tsv_header=TSV_HEADER,
                 no_tsv_header=args.no_tsv_header
             ) as writer

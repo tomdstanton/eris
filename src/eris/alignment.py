@@ -10,14 +10,12 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
 details. You should have received a copy of the GNU General Public License along with eris.
 If not, see <https://www.gnu.org/licenses/>.
 """
-from concurrent.futures import ThreadPoolExecutor, Executor
-from typing import Iterable, Generator, Callable, Literal, Iterator, Any, Union
-from itertools import groupby, combinations
+from typing import Iterable, Generator, Literal, Iterator, Any
+from itertools import groupby
 from operator import attrgetter
 from re import compile
 
-from eris import ErisWarning, RESOURCES
-from eris.seq import HasLocation, Location, Seq, Feature, Record, Qualifier
+from eris.seq import HasLocation, Location, Seq, Feature, Qualifier
 
 # Constants ------------------------------------------------------------------------------------------------------------
 _CIGAR_OPERATIONS = compile(r'(?P<n>[0-9]+)(?P<operation>[MIDNSHP=X])')

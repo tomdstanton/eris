@@ -3,21 +3,25 @@ authors = [{name = "Tom Stanton", email = "tomdstanton@gmail.com"}]
 name = "eris"
 description = "Uncovering IS-mediated discord in bacterial genomes"
 requires-python = ">= 3.9"
-version = "0.0.1-alpha"
-dependencies = ["pyrodigal"]
+#version = "0.0.1a0"
+#dependencies = ["pyrodigal>=2.1.0"]
+dynamic = ["urls", "version"]
 
-[project.urls]
-Documentation = "https://eris.readthedocs.org"
-Repository = "https://github.com/tomdstanton/eris.git"
-Issues = "https://github.com/tomdstanton/eris/issues"
-Changelog = "https://github.com/tomdstanton/eris/blob/master/CHANGELOG.md"
+#[project.urls]
+#Documentation = "https://eris.readthedocs.org"
+#Repository = "https://github.com/tomdstanton/eris.git"
+#Issues = "https://github.com/tomdstanton/eris/issues"
+#Changelog = "https://github.com/tomdstanton/eris/blob/master/CHANGELOG.md"
 
 [project.scripts]
 eris = "eris.cli:main"
 
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.pixi.workspace]
 channels = ["bioconda", "conda-forge"]
@@ -29,6 +33,7 @@ eris = { path = ".", editable = true }
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
-pixi-pycharm = ">=0.0.8,<0.0.9"
-minimap2 = ">=2.30,<3"
+#pixi-pycharm = ">=0.0.8,<0.0.9"
+#minimap2 = ">=2.30,<3"
+#bifrost = ">=1.3.5,<2"
 #frag_gene_scan_rs = ">=1.1.0,<2"

@@ -7,9 +7,11 @@ API Reference
    :caption: API Reference
    :hidden:
 
-   Core <core>
-   Typing <typing>
+   Scanner <scanner>
    Database <db>
+   IO <io>
+   Seq <seq>
+   Graph <graph>
 
 Classes
 -------
@@ -17,8 +19,5 @@ Classes
 .. autosummary::
     :nosignatures:
 
-    Aligner
-    Sequence
-    GappedSequence
-    Alignment
-    GuideTree
+    Scanner
+    DB

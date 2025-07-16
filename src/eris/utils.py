@@ -14,21 +14,22 @@ from dataclasses import dataclass, asdict
 from os import environ, X_OK, pathsep, access
 from pathlib import Path
 from sys import stdout
-from typing import IO, TextIO, Iterable, Generator, Union, Literal
+from typing import IO, Generator, Union, Literal
+from io import IOBase
 from argparse import Namespace
 from urllib.request import urlopen, Request
 from gzip import (open as gz_open, decompress as gz_decompress)
 from bz2 import (open as bz2_open, decompress as bz2_decompress)
 from lzma import (open as xz_open, decompress as xz_decompress)
 
-from eris import DEPENDENCIES
+from eris import RESOURCES
 
 # Constants ------------------------------------------------------------------------------------------------------------
 _MAGIC_BYTES = {b'\x1f\x8b': 'gz', b'\x42\x5a': 'bz2', b'\xfd7zXZ\x00': 'xz'}
 _OPEN = {'gz': gz_open, 'bz2': bz2_open, 'xz': xz_open}
 _DECOMPRESS = {'gz': gz_decompress, 'bz2': bz2_decompress, 'xz': xz_decompress}
 _MIN_N_BYTES = max(len(i) for i in _MAGIC_BYTES)  # Minimum number of bytes to read in a file to guess the compression
-if DEPENDENCIES.is_available('zstandard'):
+if 'zstandard' in RESOURCES.optional_packages:
     from zstandard import (open as zst_open, decompress as zst_decompress)
     _MAGIC_BYTES[b'\x28\xb5\x2f\xfd'] = 'zst'
     _OPEN['zst'] = zst_open
@@ -93,7 +94,7 @@ def is_non_empty_file(file: Union[str, Path], min_size: int = 1) -> bool:
         return False
 
 
-def write_to_file_or_directory(path: Union[str, Path], mode: str = 'at') -> Union[Path, IO]:
+def write_to_file_or_directory(path: Union[str, Path, IO], mode: str = 'at') -> Union[Path, IO]:
     """
     Writes to a file or creates a directory based on the provided path.
 
@@ -105,9 +106,11 @@ def write_to_file_or_directory(path: Union[str, Path], mode: str = 'at') -> Unio
     :param mode: The mode to open the file in if it's a file.
     :return: A file handle (TextIO) if a file is specified, or a Path object if a directory is specified.
     """
-    if path == '-':  # If the path is '-', return stdout
+    if isinstance(path, IOBase):
+        return path
+    if path in {'-', 'stdout'}:  # If the path is '-', return stdout
         return stdout
-    if not isinstance(path, Path):
+    if not isinstance(path, Path):  # Coerce to Path object
         path = Path(path)
     if path.suffix:  # If the path has an extension, it's probably a file
         # NB: We can't use is_file or is_dir because it may not exist yet, `open()` will create or append
@@ -137,7 +140,7 @@ def xopen(
         raise ValueError(f'Invalid {method=}')
 
     if method in {'uncompressed', 'gz', 'bz2', 'xz', 'zst'}:
-        if method == 'zst' and not DEPENDENCIES.is_available('zstandard'):
+        if method == 'zst' and 'zstandard' not in RESOURCES.optional_packages:
             raise ImportError(f'Package to deal with {method=} not imported, is it installed?')
         return _OPEN.get(method, open)(file, **open_args)
 
@@ -174,7 +177,7 @@ def decompress(
         raise ValueError(f'Invalid {method=}')
 
     if method in {'uncompressed', 'gz', 'bz2', 'xz', 'zst'}:
-        if method == 'zst' and not DEPENDENCIES.is_available('zstandard'):
+        if method == 'zst' and 'zstandard' not in RESOURCES.optional_packages:
             raise ImportError(f'Package to deal with {method=} not imported, is it installed?')
         return buffer if method == 'uncompressed' else _DECOMPRESS[method](buffer)
 
@@ -186,29 +189,6 @@ def decompress(
                 method = compression
                 break
         return buffer if method == 'uncompressed' else _DECOMPRESS[method](buffer)
-
-
-def group_positions(positions: Iterable[int], maximum_distance: int, skip_sort: bool = False
-                    ) -> Generator[list[int], None, None]:
-    """
-    Groups numbers in a list that are within a specified distance to one another; adapted from
-    `stackoverflow <https://stackoverflow.com/a/15801233>`_
-
-    :param positions: Iterable of positions along a sequence to group together
-    :param maximum_distance: Maximum distance between positions to group together
-    :param skip_sort: Skip the initial sorting of the positions
-    :return: Generator of groups of positions
-    """
-    prev, group = None, []
-    for current in (positions if skip_sort else sorted(positions)):
-        if prev is None or current - prev <= maximum_distance:
-            group.append(current)
-        else:
-            yield group
-            group = [current]
-        prev = current
-    if group:
-        yield group
 
 
 def download(url: Union[str, Request], dest: Union[str, Path] = None) -> Union[Path, bytes, None]:

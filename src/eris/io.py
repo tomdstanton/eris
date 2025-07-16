@@ -26,7 +26,7 @@ from uuid import uuid4
 from dataclasses import dataclass, asdict
 from sys import stdin
 
-from eris import ErisWarning, Requires, RESOURCES
+from eris import ErisWarning, require, RESOURCES
 from eris.alphabet import DNA
 from eris.seq import Record, Feature, Seq, Qualifier, Location
 from eris.graph import Graph, Edge
@@ -481,7 +481,7 @@ class Genome:
 
         return feature_graph
 
-    @Requires(requires='pyrodigal')
+    @require('pyrodigal')
     def find_genes(self, gene_finder: 'GeneFinder' = None, pool: Executor = None, config: GeneFinderConfig = None
                    ) -> Generator[Feature, None, None]:
         """
@@ -652,7 +652,7 @@ def _parse_gfa(handle: TextIO) -> Generator[Union[Record, Edge], None, None]:
         if line.startswith('S\t'):  # Segment contains contig info
             parts = line[2:].strip().split('\t', 2)  # Split into 3 parts: name, sequence and description
             if len(parts[1]) >= 1:  # Check sequence is at least 1bp
-                yield Record(parts[0], parts[1], qualifiers=list(_parse_tags(parts[2])))
+                yield Record(parts[0], parts[1], qualifiers=list(_parse_tags(parts[2])) if len(parts) > 2 else [])
                 records = True
         elif line.startswith('L\t'):  # Add links once all contigs are added
             fr, fr_strand, to, to_strand = line[2:].strip().split('\t')[:4]

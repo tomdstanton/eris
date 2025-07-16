@@ -85,7 +85,7 @@ class Minimap2AlignConfig(Config):
     u: Literal['f', 'b', 'n'] = None  # how to find GT-AG. f:transcript strand, b:both strands, n:don't match GT-AG [n]
     J: Literal[0, 1] = None  # splice mode. 0: original minimap2 model; 1: miniprot model [1]
     a: bool = False  # output in the SAM format (PAF by default)
-    c: bool = False  # output CIGAR in PAF
+    c: bool = True  # output CIGAR in PAF
     cs: bool = False  # output the cs tag; STR is 'short' (if absent) or 'long' [none]
     ds: bool = False  # output the ds tag, which is an extension to cs
     MD: bool = False  # output the MD tag

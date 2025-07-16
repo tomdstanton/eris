@@ -18,7 +18,7 @@ from dataclasses import asdict
 from collections import deque
 from itertools import chain
 
-from eris import ErisWarning, Requires, RESOURCES
+from eris import ErisWarning, RESOURCES, require
 from eris.db import Database
 from eris.io import Genome, SeqFile, GeneFinderConfig
 from eris.seq import Record, Feature
@@ -152,7 +152,7 @@ class Scanner:
         self._gene_finder: 'pyrodigal.GeneFinder' = None
 
     @property
-    @Requires(requires='pyrodigal')
+    @require('pyrodigal')
     def gene_finder(self):
         if not self._gene_finder:
             from pyrodigal import GeneFinder
