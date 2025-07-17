@@ -222,11 +222,13 @@ def scan_parser(subparsers):
         name, description=get_logo(desc), prog=f'{RESOURCES.package} {name}', epilog=_EPILOG,
         formatter_class=RawTextHelpFormatter, help=desc, usage="%(prog)s <genome> <genome...> [options]", add_help=False
     )
-    inputs = parser.add_argument_group(bold('Inputs'), '\nNote, input file(s) may be compressed.')
+    inputs = parser.add_argument_group(bold('Inputs'), '\nNote, input file(s) may be compressed'
+                                                       '\nNote, Genome(s) in FASTA/GFA format can paired up with '
+                                                       'GFA/BED\nannotation files with the same prefix.')
     inputs.add_argument(
         'genome', nargs='*', default=[stdin], metavar='<genome>',
-        help='Genome(s) in FASTA, GFA or Genbank format; reads from stdin by default.\n'
-             'Genome(s) in FASTA/GFA format can paired up with GFA/BED\nannotation files with the same prefix.'
+        help='Genome(s) in FASTA, GFA or Genbank format;\n'
+             'reads from stdin by default.'
    )
     outputs = parser.add_argument_group(
         bold('Outputs'),
@@ -238,13 +240,13 @@ def scan_parser(subparsers):
         type=write_to_file_or_directory
     )
     outputs.add_argument(  # FFN output can be written to a single file or one file per genome
-        '--ffn', metavar='', help=f'Path to output feature DNA sequences in FASTA format\n'
-                                  f'Defaults to "./[genome]{_SUFFIX}.ffn" when passed without arguments',
+        '--ffn', metavar='', help=f'Path to output feature DNA sequences in FASTA format;\n'
+                                  f'defaults to "./[genome]{_SUFFIX}.ffn" when passed without arguments.',
         const='.', nargs='?', type=write_to_file_or_directory, default=None
     )
     outputs.add_argument(  # FAA output can be written to a single file or one file per genome
-        '--faa', metavar='', help=f'Path to output feature Amino acid sequences in FASTA format\n'
-                                  f'Defaults to "./[genome]{_SUFFIX}.faa" when passed without arguments',
+        '--faa', metavar='', help=f'Path to output feature Amino acid sequences in FASTA format;\n'
+                                  f'defaults to "./[genome]{_SUFFIX}.faa" when passed without arguments.',
         const='.', nargs='?', type=write_to_file_or_directory, default=None
     )
     outputs.add_argument('--no-tsv-header', action='store_true', help='Suppress header in TSV output')

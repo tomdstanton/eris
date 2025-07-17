@@ -46,11 +46,12 @@ usage: eris scan <genome> <genome...> [options]
 
 Inputs:
   
-  Note, input file(s) may be compressed.
+  Note, input file(s) may be compressed
+  Note, Genome(s) in FASTA/GFA format can paired up with GFA/BED
+  annotation files with the same prefix.
 
-  <genome>         Genome(s) in FASTA, GFA or Genbank format; reads from stdin by default.
-                   Genome(s) in FASTA/GFA format can paired up with GFA/BED
-                   annotation files with the same prefix.
+  <genome>         Genome(s) in FASTA, GFA or Genbank format;
+                   reads from stdin by default.
 
 Outputs:
   
@@ -58,10 +59,10 @@ Outputs:
   If a directory is passed, individual files will be written per input genome
 
   --tsv []         Path to output tabular results (default: stdout)
-  --ffn []         Path to output feature DNA sequences in FASTA format
-                   Defaults to "./[genome]_eris_results.ffn" when passed without arguments
-  --faa []         Path to output feature Amino acid sequences in FASTA format
-                   Defaults to "./[genome]_eris_results.faa" when passed without arguments
+  --ffn []         Path to output feature DNA sequences in FASTA format;
+                   defaults to "./[genome]_eris_results.ffn" when passed without arguments.
+  --faa []         Path to output feature Amino acid sequences in FASTA format;
+                   defaults to "./[genome]_eris_results.faa" when passed without arguments.
   --no-tsv-header  Suppress header in TSV output
 
 Other options:
