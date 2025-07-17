@@ -59,13 +59,13 @@ class InsertionSequence:
     def __len__(self):
         return len(self.feature)
 
-    def __format__(self, __format_spec: Literal['tsv'] = '') -> str:
+    def __format__(self, __format_spec: Literal['tsv', 'fna', 'bed', 'faa', 'ffn'] = '') -> str:
         if __format_spec == '':
             return self.__str__()
         elif __format_spec in {'fna', 'bed'}:
             return ''.join(
                 format(i, __format_spec) for i in chain([self.feature], self.CDS_in_element, self.CDS_flanking_element))
-        elif __format_spec == 'faa':
+        elif __format_spec in {'faa', 'ffn'}:
             return ''.join(
                 format(i, __format_spec) for i in chain(self.CDS_in_element, self.CDS_flanking_element))
         elif __format_spec == 'tsv':
@@ -111,10 +111,10 @@ class ScannerResult:
     def __len__(self):
         return len(self.insertion_sequences)
 
-    def __format__(self, __format_spec: Literal['tsv'] = '') -> str:
+    def __format__(self, __format_spec: Literal['tsv', 'fna', 'bed', 'faa', 'ffn'] = '') -> str:
         if __format_spec == '':
             return self.__str__()
-        elif __format_spec == 'tsv':
+        elif __format_spec in {'tsv', 'fna', 'bed', 'faa', 'ffn'}:
             return ''.join(format(i, __format_spec) for i in self.insertion_sequences)
         else:
             raise NotImplementedError(f'Invalid format: {__format_spec}')

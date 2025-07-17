@@ -25,15 +25,20 @@ from eris import RESOURCES
 from eris.io import SeqFile, Genome
 from eris.utils import bold, get_logo, write_to_file_or_directory
 
+# Constants ------------------------------------------------------------------------------------------------------------
+_EPILOG = 'For more help, visit: ' + bold(f'{RESOURCES.package}.readthedocs.io')
+_SUFFIX = f'_{RESOURCES.package}_results'
+
+
 # Classes --------------------------------------------------------------------------------------------------------------
 class ResultWriter:
     """
     A class to handle the writing of results to multiple types of files; to be used with the CLI.
     """
-    def __init__(self, *outputs: tuple[str, Union[str, Path, IO]], suffix: str = '_eris_results',
+    def __init__(self, *outputs: tuple[str, Union[str, Path, IO]], suffix: str = _SUFFIX,
                  no_tsv_header: bool = False, tsv_header: str = '#', pool: Executor = None):
         """
-        :param suffix: Suffix to append to output filenames (default: _eris_results)
+        :param suffix: Suffix to append to output filenames
         :param no_tsv_header: Suppress header in TSV output (default: False)
         """
         self._files = {}
@@ -212,33 +217,35 @@ class ProgressBar:
 
 # Functions ------------------------------------------------------------------------------------------------------------
 def scan_parser(subparsers):
+    name, desc = 'scan', 'Scan for IS in bacterial genomes'
     parser = subparsers.add_parser(
-        'scan', description=get_logo('Scan for IS in bacterial genomes'),
-        epilog=f'For more help, visit: {bold('eris.readthedocs.io')}',
-        add_help=False, formatter_class=RawTextHelpFormatter,
-        help='Scan for IS in bacterial genomes', usage="%(prog)s <genome> <genome...> [options]"
+        name, description=get_logo(desc), prog=f'{RESOURCES.package} {name}', epilog=_EPILOG,
+        formatter_class=RawTextHelpFormatter, help=desc, usage="%(prog)s <genome> <genome...> [options]", add_help=False
     )
-    inputs = parser.add_argument_group(bold('Inputs'), '')
+    inputs = parser.add_argument_group(bold('Inputs'), '\nNote, input file(s) may be compressed.')
     inputs.add_argument(
         'genome', nargs='*', default=[stdin], metavar='<genome>',
-        help='Genome(s) in FASTA, GFA or Genbank format.\nIf not provided, reads from stdin.'
+        help='Genome(s) in FASTA, GFA or Genbank format; reads from stdin by default.\n'
+             'Genome(s) in FASTA/GFA format can paired up with GFA/BED\nannotation files with the same prefix.'
    )
     outputs = parser.add_argument_group(
         bold('Outputs'),
         '\nNote, text outputs accept "-" or "stdout" for stdout'
         '\nIf a directory is passed, individual files will be written per input genome'
     )
-    outputs.add_argument(
+    outputs.add_argument(  # TSV output can be written to a single file or one file per genome, default=stdout
         '--tsv', metavar='', default=stdout, help='Path to output tabular results (default: stdout)', nargs='?',
         type=write_to_file_or_directory
     )
-    outputs.add_argument(
-        '--ffn', metavar='', help='Path to output feature DNA sequences in FASTA format',
-        const='.', nargs='?', type=write_to_file_or_directory
+    outputs.add_argument(  # FFN output can be written to a single file or one file per genome
+        '--ffn', metavar='', help=f'Path to output feature DNA sequences in FASTA format\n'
+                                  f'Defaults to "./[genome]{_SUFFIX}.ffn" when passed without arguments',
+        const='.', nargs='?', type=write_to_file_or_directory, default=None
     )
-    outputs.add_argument(
-        '--faa', metavar='', help='Path to output feature Amino acid sequences in FASTA format',
-        const='.', nargs='?', type=write_to_file_or_directory
+    outputs.add_argument(  # FAA output can be written to a single file or one file per genome
+        '--faa', metavar='', help=f'Path to output feature Amino acid sequences in FASTA format\n'
+                                  f'Defaults to "./[genome]{_SUFFIX}.faa" when passed without arguments',
+        const='.', nargs='?', type=write_to_file_or_directory, default=None
     )
     outputs.add_argument('--no-tsv-header', action='store_true', help='Suppress header in TSV output')
     opts = parser.add_argument_group(bold('Other options'), '')
@@ -249,9 +256,8 @@ def scan_parser(subparsers):
 # Main CLI Entry Point -------------------------------------------------------------------------------------------------
 def main():
     parser = ArgumentParser(
-        description=get_logo('Uncovering IS-mediated discord in bacterial genomes'),
+        description=get_logo('Uncovering IS-mediated discord in bacterial genomes'), epilog=_EPILOG,
         usage="%(prog)s <command>", add_help=False, prog=RESOURCES.package, formatter_class=RawDescriptionHelpFormatter,
-        epilog=f'For more help, visit: {bold("%(prog)s.readthedocs.io")}'
     )
     subparsers = parser.add_subparsers(
         title=bold('Command'), dest='command', metavar='<command>', required=True, help=None,
@@ -265,18 +271,11 @@ def main():
 
     if args.command == 'scan':
         from eris.scanner import Scanner, TSV_HEADER
-        writer = ResultWriter(
-            ('tsv', args.tsv), ('faa', args.faa), ('ffn', args.ffn),
-            tsv_header=TSV_HEADER,
-            no_tsv_header=args.no_tsv_header
-        )
-
         with (
             Scanner() as scanner,
             ResultWriter(
-                ('tsv', args.tsv),
-                tsv_header=TSV_HEADER,
-                no_tsv_header=args.no_tsv_header
+                ('tsv', args.tsv), ('faa', args.faa), ('ffn', args.ffn),
+                tsv_header=TSV_HEADER, no_tsv_header=args.no_tsv_header
             ) as writer
         ):
             for result in ProgressBar(args.genome, scanner, "Scanning genomes"):

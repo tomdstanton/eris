@@ -39,21 +39,37 @@ The information below explains how to use the `eris` CLI. For API usage, please 
 
 #### Arguments
 ```shell
-Inputs:
+usage: eris scan <genome> <genome...> [options]
 
-  genomes          Genomes in FASTA, GFA or Genbank format
+========================|> eris |>========================
+             Scan for IS in bacterial genomes             
+
+Inputs:
+  
+  Note, input file(s) may be compressed.
+
+  <genome>         Genome(s) in FASTA, GFA or Genbank format; reads from stdin by default.
+                   Genome(s) in FASTA/GFA format can paired up with GFA/BED
+                   annotation files with the same prefix.
 
 Outputs:
   
-  Note, text outputs accept '-' for stdout
+  Note, text outputs accept "-" or "stdout" for stdout
+  If a directory is passed, individual files will be written per input genome
 
-  --tsv            Path to output tabular results (default: stdout)
+  --tsv []         Path to output tabular results (default: stdout)
+  --ffn []         Path to output feature DNA sequences in FASTA format
+                   Defaults to "./[genome]_eris_results.ffn" when passed without arguments
+  --faa []         Path to output feature Amino acid sequences in FASTA format
+                   Defaults to "./[genome]_eris_results.faa" when passed without arguments
   --no-tsv-header  Suppress header in TSV output
 
 Other options:
 
   -v, --version    Show version number and exit
   -h, --help       Show this help message and exit
+
+For more help, visit: eris.readthedocs.io
 ```
 
 #### The algorithm 
