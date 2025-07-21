@@ -6,7 +6,7 @@ repo_name: "tomdstanton/eris"
 watch: [mkdocs.yml, README.md, src]
 
 nav:
-  - Home: "README.md"
+  - Home: index.md
 
 theme:
   name: "material"
