@@ -12,12 +12,14 @@ nav:
 theme:
   name: "material"
   homepage: https://tomdstanton.github.io/eris
-  palette: 
+  palette:
     - scheme: default
+      primary: deep purple
       toggle:
         icon: material/brightness-7 
         name: Switch to dark mode
     - scheme: slate
+      primary: deep purple
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -56,7 +58,6 @@ plugins:
       nav_item_prefix: "<code class='doc-symbol doc-symbol-nav doc-symbol-module'></code>"
       exclude_private: true
       on_implicit_namespace_package: "warn"
-      # Add this exclude list
       exclude:
         - "**/pan.py"
         - "**/mapper.py"
