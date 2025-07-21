@@ -8,6 +8,18 @@ dynamic = ["urls", "version"]
 [project.scripts]
 eris = "eris.cli:main"
 
+[project.optional-dependencies]
+test = ["pytest"]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocs-api-autonav>=0.3.0,<0.4"
+]
+orf = ["pyrodigal>=2.1.0"]
+# This line defines a 'dev' extra that includes all the others
+dev = ["eris[test,docs,orf]"]
+
+# This section is for hatch/pixi environments and should be kept
 [dependency-groups]
 test = ["pytest"]
 docs = [
