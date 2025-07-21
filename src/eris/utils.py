@@ -98,13 +98,13 @@ def write_to_file_or_directory(path: Union[str, Path, IO], mode: str = 'at') -> 
     """
     Writes to a file or creates a directory based on the provided path.
 
-    If the path is '-', it returns stdout.
+    If the path is '-' or 'stdout', it returns stdout.
     If the path has a suffix, it's treated as a file and opened for appending.
     If the path has no suffix, it's treated as a directory and created if it doesn't exist.
 
     :param path: The path to the file or directory.
     :param mode: The mode to open the file in if it's a file.
-    :return: A file handle (TextIO) if a file is specified, or a Path object if a directory is specified.
+    :return: A file handle (IO) if a file is specified, or a Path object if a directory is specified.
     """
     if isinstance(path, IOBase):
         return path
