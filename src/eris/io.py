@@ -1,14 +1,5 @@
 """
-Copyright 2025 Tom Stanton (tomdstanton@gmail.com)
-https://github.com/tomdstanton/eris
-
-This file is part of eris. eris is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version. eris is distributed
-in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-details. You should have received a copy of the GNU General Public License along with eris.
-If not, see <https://www.gnu.org/licenses/>.
+Module for parsing and managing bacterial sequence files and data.
 """
 from functools import partial
 from operator import attrgetter
@@ -485,7 +476,21 @@ class Genome:
     def find_genes(self, gene_finder: 'GeneFinder' = None, pool: Executor = None, config: GeneFinderConfig = None
                    ) -> Generator[Feature, None, None]:
         """
-        Predicts ORFs in the Genome using Pyrodigal
+        Predicts ORFs in the Genome using Pyrodigal.
+
+        Parameters:
+            gene_finder: An optional pre-trained `pyrodigal.GeneFinder` instance. If not provided, one will be
+                         initialized using the `config` parameter.
+            pool: An optional `Executor` (e.g., `ThreadPoolExecutor` or `ProcessPoolExecutor`)
+                  to parallelize gene finding across contigs. If `None`, a `ThreadPoolExecutor` will be created.
+            config: A `GeneFinderConfig` object to configure the Pyrodigal GeneFinder. Only used if `gene_finder`
+                    is `None`.
+
+        Yields:
+            `Feature` objects representing the predicted CDS (Coding Sequence) genes.
+
+        Notes:
+            - Requires `pyrodigal` to be installed.
         """
         from pyrodigal import __version__ as _pyrodigal_version
         from pyrodigal import Gene

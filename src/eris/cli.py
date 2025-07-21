@@ -1,14 +1,5 @@
 """
-Copyright 2025 Tom Stanton (tomdstanton@gmail.com)
-https://github.com/tomdstanton/eris
-
-This file is part of eris. eris is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version. eris is distributed
-in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-details. You should have received a copy of the GNU General Public License along with eris.
-If not, see <https://www.gnu.org/licenses/>.
+Module for managing the CLI layer on top of the API; also contains the CLI entry point under `main()`.
 """
 from itertools import chain
 from typing import Iterable, Callable, Any, Union, IO, Dict
@@ -112,6 +103,7 @@ class ResultWriter:
         """
         Write the typing result to files or file handles
         :param result: A Result instance or None
+        :param open_mode: The mode to open the files in
         """
         if result is None:
             return None

@@ -1,19 +1,9 @@
 """
-Copyright 2025 Tom Stanton (tomdstanton@gmail.com)
-https://github.com/tomdstanton/eris
-
-This file is part of eris. eris is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version. eris is distributed
-in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-details. You should have received a copy of the GNU General Public License along with eris.
-If not, see <https://www.gnu.org/licenses/>.
+Module for managing the IS database from ISFinder.
 """
-from warnings import warn
 from csv import DictReader
 
-from eris import RESOURCES, ErisWarning
+from eris import RESOURCES
 from eris.io import SeqFile
 from eris.seq import Qualifier
 from eris.utils import download, is_non_empty_file
@@ -32,6 +22,13 @@ _FNA_PATH = RESOURCES.data / _FNA_NAME
 
 # Classes --------------------------------------------------------------------------------------------------------------
 class Database:
+    """
+    A class to manage the ISFinder database, including downloading and parsing the data.
+
+    Attributes:
+        records: dict[str, 'Record'] A dictionary of the ISFinder sequences in the database.
+        qualifiers: list[str] A list of metadata qualifiers available for each record.
+    """
     def __init__(self):
 
         if not is_non_empty_file(_CSV_PATH):
@@ -40,11 +37,11 @@ class Database:
         if not is_non_empty_file(_FNA_PATH):
             download(_FNA_URL, _FNA_PATH)
 
-        self.records = {}
+        self.records: dict[str, 'Record'] = {}
 
         with open(_CSV_PATH, 'rt') as csv_file, SeqFile(_FNA_PATH, 'fasta') as fna_file:
             reader = DictReader(csv_file)
-            self.qualifiers = reader.fieldnames
+            self.qualifiers: list[str] = reader.fieldnames
             metadata = {i['Name']: i for i in reader}
             for record in fna_file:  # type: Record
                 if record_metadata := metadata.get(record.id.partition('_')[0]):

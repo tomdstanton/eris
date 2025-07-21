@@ -1,21 +1,8 @@
 """
-Copyright 2025 Tom Stanton (tomdstanton@gmail.com)
-https://github.com/tomdstanton/eris
-
-This file is part of eris. eris is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version. eris is distributed
-in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-details. You should have received a copy of the GNU General Public License along with eris.
-If not, see <https://www.gnu.org/licenses/>.
+Module for handling simple networks, abolishing reliance on `networkx`.
 """
-from typing import Literal, Union, Any, List, Optional, Tuple, Set, Dict
-from collections import defaultdict, deque
-from heapq import heappush, heappop
-from warnings import warn
-
-from eris import ErisWarning
+from typing import Literal, Any, Optional, Set, Dict
+from collections import defaultdict
 
 # Classes --------------------------------------------------------------------------------------------------------------
 class Edge:

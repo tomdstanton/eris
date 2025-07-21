@@ -1,14 +1,5 @@
 """
-Copyright 2025 Tom Stanton (tomdstanton@gmail.com)
-https://github.com/tomdstanton/eris
-
-This file is part of eris. eris is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version. eris is distributed
-in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-details. You should have received a copy of the GNU General Public License along with eris.
-If not, see <https://www.gnu.org/licenses/>.
+Module for running the scan pipeline on bacterial genomes.
 """
 from typing import Literal, Union, Generator, IO
 from warnings import warn
@@ -141,6 +132,12 @@ class Scanner:
         index_config: Minimap2 index configuration
         gene_finder_config: Configuration for the pyrodigal GeneFinder instance if needed
         pool: A thread or process pool executor instance if needed
+
+    Examples:
+        >>> from eris.scanner import Scanner
+        ... from pathlib import Path
+        ... with Scanner() as scanner:
+        ...     results = list(scanner.scan(*Path.iterdir('genomes/')))
     """
     def __init__(self, align_config: Minimap2AlignConfig = None, index_config: Minimap2IndexConfig = None,
                  gene_finder_config: GeneFinderConfig = None, pool: Executor = None):

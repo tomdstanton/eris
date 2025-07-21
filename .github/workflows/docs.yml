@@ -1,51 +1,38 @@
-name: website
-
-# build the documentation whenever there are new commits on main
+# .github/workflows/docs.yml
+name: docs
 on:
   push:
     branches:
+      - master
       - main
-    # Alternative: only build for tags.
-    # tags:
-    #   - '*'
-
-# security: restrict permissions for CI jobs.
 permissions:
-  contents: read
-
+  contents: write
 jobs:
-  # Build the documentation and upload the static HTML files as an artifact.
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      # ADJUST THIS: install all dependencies (including pdoc)
-      - run: pip install -e .
-      # ADJUST THIS: build your documentation into docs/.
-      # We use a custom build script for pdoc itself, ideally you just run `pdoc -o docs/ ...` here.
-      - run: pdoc -o docs/
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs/
-
-  # Deploy the artifact to GitHub pages.
-  # This is a separate job so that only actions/deploy-pages has the necessary permissions.
   deploy:
-    needs: build
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          # Your pyproject.toml requires >= 3.9. Pinning to a specific version
+          # ensures your builds are stable and reproducible.
+          python-version: '3.11'
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          # Create a cache key based on the runner's OS, Python version,
+          # and a hash of your pyproject.toml. This is the most reliable way.
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: pip install .[docs]
+
+      - name: Deploy documentation
+        run: mkdocs gh-deploy --force

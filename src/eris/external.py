@@ -1,14 +1,5 @@
 """
-Copyright 2025 Tom Stanton (tomdstanton@gmail.com)
-https://github.com/tomdstanton/eris
-
-This file is part of eris. eris is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version. eris is distributed
-in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-details. You should have received a copy of the GNU General Public License along with eris.
-If not, see <https://www.gnu.org/licenses/>.
+Module for managing external programs such as Minimap2.
 """
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -17,7 +8,7 @@ from subprocess import Popen, PIPE, DEVNULL
 from dataclasses import dataclass, asdict
 from warnings import warn
 
-from eris import RESOURCES
+from eris import RESOURCES, ErisWarning
 from eris.seq import Record, Feature
 from eris.io import SeqFile, ReadSet
 from eris.utils import Config, find_executable_binaries, is_non_empty_file
@@ -27,6 +18,11 @@ from eris.alignment import Alignment
 # Classes --------------------------------------------------------------------------------------------------------------
 class ExternalProgramError(Exception):
     pass
+
+
+class ExternalProgramWarning(ErisWarning):
+    pass
+
 
 class ExternalProgram:
     """
@@ -52,6 +48,7 @@ class ExternalProgram:
 
 @dataclass
 class Minimap2IndexConfig(Config):
+    """`dataclass` to handle CLI flags for Minimap2 indexing"""
     t: int = RESOURCES.available_cpus  # Number of threads [3]
     H: bool = False  # use homopolymer-compressed k-mer (preferable for PacBio)
     k: int = None  # k-mer size (no larger than 28) [15]
@@ -61,6 +58,7 @@ class Minimap2IndexConfig(Config):
 
 @dataclass
 class Minimap2AlignConfig(Config):
+    """`dataclass` to handle CLI flags for Minimap2 alignment"""
     x: Literal[
         'lr:hq', 'splice', 'splice:hq', 'asm5', 'asm10', 'asm20', 'sr', 'map-pb', 'map-hifi', 'map-ont', 'map-iclr',
         'ava-pb', 'ava-ont'
@@ -111,12 +109,16 @@ class Minimap2Error(ExternalProgramError):
     pass
 
 
+class Minimap2Warning(ExternalProgramWarning):
+    pass
+
+
 class Minimap2(ExternalProgram):
     """
     An aligner instance using Minimap2. The class can be instantiated with targets which will create a temporary
     index file, that can be handled safely with context management.
 
-    Example:
+    Examples:
         >>> from eris.external import Minimap2
         ... from eris.io import Genome
         ... with Minimap2(targets=Genome.from_file('tests.fasta')) as aligner:  # Build the index from genome 1
@@ -172,14 +174,14 @@ class Minimap2(ExternalProgram):
             if isinstance(i, (Path, SeqFile)):
                 # Check arg_types to make sure it doesn't contain pipe-able types (Record, Feature, str)
                 if pipe:
-                    raise ExternalAlignerError('Cannot mix pipe-able inputs with file-like inputs')
+                    raise Minimap2Error('Cannot mix pipe-able inputs with file-like inputs')
                 proc_arg.append(str(i))  # Requires SeqFile str representation to be SeqFile.path.__str__
             else:
                 if proc_arg:
-                    raise ExternalAlignerError('Cannot mix pipe-able inputs with file-like inputs')
+                    raise Minimap2Error('Cannot mix pipe-able inputs with file-like inputs')
                 if isinstance(i, str):
                     if not i.startswith('>') or not i.startswith('@'):
-                        raise ExternalAlignerError('If input is a string, it must be in sequence format')
+                        raise Minimap2Error('If input is a string, it must be in sequence format')
                     pipe += i
                 else:
                     pipe += format(i, 'fasta')
@@ -225,7 +227,7 @@ class Minimap2(ExternalProgram):
                         or ``Features``; will otherwise use the target index built at instantiation.
                         If ``targets`` is passed and a target index exists, the target index is ignored.
                         If ``query`` is not a path and ``targets`` is not a path, a new target index will need to be
-                        built, which will overwrite any existing target index, printing a ``erisAlignmentWarning``.
+                        built, which will overwrite any existing target index, printing a ``Minimap2Warning``.
 
         :returns: A generator of ``Alignment`` objects
         """
@@ -236,7 +238,7 @@ class Minimap2(ExternalProgram):
             target_arg, target_pipe = self._validate_seqs(*targets)
             if query_pipe and target_pipe:  # Both are stdin, so we need to create the target index
                 if self._target_index:  # Existing target index, raise an error rather than overwriting
-                    warn('Overwriting existing target index', ExternalAlignerWarning)
+                    warn('Overwriting existing target index', Minimap2Warning)
                 target_arg, target_pipe = self.build_index(targets).name, None
         else:
             if self._target_index:

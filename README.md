@@ -1,7 +1,19 @@
 # `eris` 🧬🧞‍♀🔮️
 Uncovering IS-mediated discord in bacterial genomes
 
-## Introduction
+[![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/gpl-3.0/)
+[![PyPI](https://img.shields.io/pypi/v/eris.svg?style=flat-square&maxAge=3600&logo=PyPI)](https://pypi.org/project/eris)
+[![Bioconda](https://img.shields.io/conda/vn/bioconda/eris?style=flat-square&maxAge=3600&logo=anaconda)](https://anaconda.org/bioconda/eris)
+[![Wheel](https://img.shields.io/pypi/wheel/eris.svg?style=flat-square&maxAge=3600)](https://pypi.org/project/eris/#files)
+[![Python Versions](https://img.shields.io/pypi/pyversions/eris.svg?style=flat-square&maxAge=600&logo=python)](https://pypi.org/project/eris/#files)
+[![Python Implementations](https://img.shields.io/pypi/implementation/eris.svg?style=flat-square&maxAge=600&label=impl)](https://pypi.org/project/eris/#files)
+[![Source](https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=2678400&style=flat-square)](https://github.com/tomdstanton/eris/)
+[![Issues](https://img.shields.io/github/issues/tomdstanton/eris.svg?style=flat-square&maxAge=600)](https://github.com/tomdstanton/eris/issues)
+[![Docs](https://img.shields.io/readthedocs/eris/latest?style=flat-square&maxAge=600)](https://eris.readthedocs.io)
+[![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/tomdstanton/eris/blob/main/CHANGELOG.md)
+[![Downloads](https://img.shields.io/pypi/dm/eris?style=flat-square&color=303f9f&maxAge=86400&label=downloads)](https://pepy.tech/project/eris)
+
+## Introduction 🌐
 `eris` is a Python package for finding IS elements in bacterial genomes and quantifying their effect on other genes.
 IS elements are known to move, disrupt and even promote genes and whilst there are many tools to find IS elements in
 genomes, few attempt to report the resulting effects. 
@@ -10,9 +22,9 @@ Like many bioinformatics tools `eris` is designed to work from
 the command-line, but is built on top of a robust API with few dependencies, and can be easily installed and
 incorporated into other programs, scripts and pipelines.
 
-## Installation
+## Installation ⚙️
 
-### Requires
+### Requires 🧰
 ```
 python >=3.9
 minimap2 >=2.18
@@ -29,10 +41,10 @@ pip install -e .
 pixi install
 ```
 
-## Usage
+## Usage 🧑‍💻
 The information below explains how to use the `eris` CLI. For API usage, please refer to the `docs/`.
 
-### Scan
+### Scan 🔍
 
 #### Quickstart
 `eris scan *.{fasta,gfa,gb} > results.tsv`
@@ -109,7 +121,7 @@ The TSV columns are as follows:
 
 1. **Genome**: The name of the input genome.
 1. **IS_element**: The unique identifier of the IS element.
-1. **Context**: Signifies the IS element from alignment, an CDS inside or an CDS outside the IS element.
+1. **Context**: Signifies the IS element from alignment, a CDS inside or a CDS outside the IS element.
 1. **Feature**: The unique identifier of the feature in question.
 1. **Type**: The [feature type](https://www.insdc.org/submitting-standards/feature-table/), currently only CDS are 
 supported if annotations are provided; IS elements are annotated as "`mobile_element`".
@@ -139,10 +151,14 @@ will be trained on the first genome, which may impact how well it finds ORFs in 
 (faster + works on reads)
 
 
-### Map
-Re-implementation of [ISMapper](https://github.com/jhawkey/IS_mapper), with reference-based and reference-free options.
+### Pan 🦘
+`eris pan` quantifies the effect of IS-mediated events in pan-genome graphs.
 
 Coming soon!
 
+### Map 🗺️
+Re-implementation of [ISMapper](https://github.com/jhawkey/IS_mapper), with reference-based and reference-free options.
+
+Coming soon!
 
 ![eris](https://static.wikia.nocookie.net/dreamworks/images/6/6f/Sinbad-disneyscreencaps.com-1100.jpg/revision/latest?cb=20240311205845)
