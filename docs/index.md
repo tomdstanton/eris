@@ -147,7 +147,7 @@ supported if annotations are provided; IS elements are annotated as "`mobile_ele
  - Exact promoter region quantification for flanking genes to add more evidence of gene promotion.
  - If providing multiple sequence file inputs from different species, the `pyrodigal.GeneFinder` instance
 will be trained on the first genome, which may impact how well it finds ORFs in other species.
- - Consider implementing [FragGeneScanRs](github.com/unipept/FragGeneScanRs) instead of Pyrodigal 
+ - Consider implementing [FragGeneScanRs](https://github.com/unipept/FragGeneScanRs) instead of Pyrodigal 
 (faster + works on reads)
 
 

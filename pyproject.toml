@@ -19,18 +19,6 @@ docs = [
 orf = ["pyrodigal>=2.1.0"]
 dev = ["eris[test,docs,orf]"]
 
-# This section is for hatch/pixi environments and should be kept
-[dependency-groups]
-test = ["pytest"]
-docs = [
-    "mkdocs",
-    "mkdocs-material",
-    "mkdocs-api-autonav>=0.3.0,<0.4"
-#    "mkdocs-include-markdown-plugin"
-]
-orf = ["pyrodigal>=2.1.0"]
-dev = [{include-group = "test"}, {include-group = "docs"}, {include-group = "orf"}]
-
 [build-system]
 build-backend = "hatchling.build"
 requires = ["hatchling", "hatch-vcs"]
