@@ -14,7 +14,8 @@ docs = [
     "mkdocs",
     "mkdocs-material",
     "mkdocs-api-autonav>=0.3.0,<0.4",
-    "pyrodigal>=2.1.0"
+    "pyrodigal>=2.1.0",
+    "black"
 ]
 orf = ["pyrodigal>=2.1.0"]
 dev = ["eris[test,docs,orf]"]

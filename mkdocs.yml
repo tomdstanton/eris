@@ -1,3 +1,4 @@
+# /Users/tsta0015/Programming/eris/mkdocs.yml
 site_name: "eris"
 site_url: https://tomdstanton.github.io/eris
 repo_url: https://github.com/tomdstanton/eris
@@ -55,3 +56,7 @@ plugins:
       nav_item_prefix: "<code class='doc-symbol doc-symbol-nav doc-symbol-module'></code>"
       exclude_private: true
       on_implicit_namespace_package: "warn"
+      # Add this exclude list
+      exclude:
+        - "**/pan.py"
+        - "**/mapper.py"

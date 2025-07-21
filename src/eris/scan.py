@@ -201,7 +201,7 @@ class Scanner:
                 contigs_with_is.append(contig)  # Add contig name to list, also indicator that we have alignments
 
         if not contigs_with_is:  # No alignments found, warn and exit early
-            return warn('No alignments found', ISScannerWarning)
+            return warn('No alignments found', ScannerWarning)
 
         if not genome.is_annotated:  # Get ORFs if neccessary, only do this if we have alignments to exit early
             genes = {gene.id: gene for gene in genome.find_genes(self.gene_finder, self.pool)}

@@ -264,7 +264,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == 'scan':
-        from eris.scanner import Scanner, TSV_HEADER
+        from eris.scan import Scanner, TSV_HEADER
         with (
             Scanner() as scanner,
             ResultWriter(
