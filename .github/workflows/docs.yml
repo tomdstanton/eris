@@ -35,4 +35,4 @@ jobs:
         run: pip install .[docs]
 
       - name: Deploy documentation
-        run: mkdocs gh-deploy --force
+        run: python -m mkdocs gh-deploy --force
