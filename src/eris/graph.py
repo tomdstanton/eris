@@ -1,5 +1,5 @@
 """
-Module for handling simple networks, abolishing reliance on `networkx`.
+Module for handling simple networks, abolishing reliance on networkx.
 """
 from typing import Literal, Any, Optional, Set, Dict
 from collections import defaultdict

@@ -127,10 +127,10 @@ class Scanner:
     (including potential graph traversal), and are returned in a result object for later reporting.
 
     Attributes:
-        db: The ISFinder sequence `eris.Database` object
+        db: The ISFinder sequence eris.Database object
         align_config: Minimap2 alignment configuration
         index_config: Minimap2 index configuration
-        gene_finder_config: Configuration for the `pyrodigal.GeneFinder` instance if needed
+        gene_finder_config: Configuration for the pyrodigal.GeneFinder instance if needed
         pool: A ThreadPoolExecutor or ProcessPoolExecutor instance if needed
 
     Examples:
