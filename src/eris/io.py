@@ -2,13 +2,12 @@
 Module for parsing and managing bacterial sequence files and data.
 """
 from functools import partial
-from operator import attrgetter
 from warnings import warn
 from re import compile
 from pathlib import Path
 from typing import Union, Generator, IO, Literal, Iterable, TextIO, get_args, Callable
 from concurrent.futures import Executor, ThreadPoolExecutor
-from itertools import chain, groupby
+from itertools import chain
 from io import BufferedIOBase, RawIOBase
 from shutil import copyfileobj
 from tempfile import NamedTemporaryFile
@@ -21,10 +20,10 @@ from eris import ErisWarning, require, RESOURCES
 from eris.alphabet import DNA
 from eris.seq import Record, Feature, Seq, Qualifier, Location
 from eris.graph import Graph, Edge
-from eris.utils import xopen, Config
+from eris.utils import xopen, Config, grouper
 
 # Constants ------------------------------------------------------------------------------------------------------------
-_SUPPORTED_FORMATS = Literal['fasta', 'gfa', 'genbank', 'fastq', 'bed']
+_SUPPORTED_FORMATS = Literal['fasta', 'gfa', 'genbank', 'fastq', 'gff']
 _TAG2TYPE = {'f': float, 'i': int, 'Z' : str}  # See: https://github.com/GFA-spec/GFA-spec/blob/master/GFA1.md#optional-fields
 _FEATURE_KINDS = {'CDS'}  # 'gene', 'misc_feature', 'ncRNA', 'rRNA', 'regulatory', 'tRNA', 'tmRNA'}
 _SEQUENCE_FILE_REGEX = compile(
@@ -388,9 +387,9 @@ class Genome:
             annotations = SeqFile(annotations) if not isinstance(annotations, SeqFile) else annotations
             if not annotations.format in {'gff', 'bed'}:
                 raise GenomeError(f'Annotations must be in GFF or BED format, not {annotations.format}')
-            for contig_id, features in groupby(sorted(annotations, key=attrgetter('location.parent_id')), key=attrgetter('location.parent_id')):
+            for contig_id, features in grouper(annotations, 'location.parent_id'):  # Sort by contig id
                 if contig := self.contigs.get(contig_id):  # type: Record
-                    contig.add_features(features)
+                    contig.add_features(*features)
                     self.is_annotated = True
         return self
 
@@ -473,8 +472,8 @@ class Genome:
         return feature_graph
 
     @require('pyrodigal')
-    def find_genes(self, gene_finder: 'GeneFinder' = None, pool: Executor = None, config: GeneFinderConfig = None
-                   ) -> Generator[Feature, None, None]:
+    def find_genes(self, gene_finder: 'pyrodigal.GeneFinder' = None, pool: Executor = None,
+                   config: GeneFinderConfig = None) -> Generator[Feature, None, None]:
         """
         Predicts ORFs in the Genome using Pyrodigal.
 
@@ -552,19 +551,8 @@ def _guess_format_from_handle(handle: TextIO) -> _SUPPORTED_FORMATS:
             return 'genbank'
         elif first_line.startswith('S\t'):
             return 'gfa'
-        # Basic check for BED/GFF. This could be more robust.
-        # BED files have at least 3 tab-separated columns.
-        elif len(first_line.split('\t')) >= 3:
-            # This is ambiguous between BED and GFF.
-            # GFF often has a "##gff-version" header, but not always.
-            # For now, let's add a placeholder or a basic guess.
-            # A more robust check would be needed for GFF vs BED.
-            # For this example, we'll assume BED if it's not GFF.
-            if "gff-version" in first_line:
-                 return 'gff'
-            # Let's assume BED for now, but this is a weak check.
-            # You might want to prioritize one or raise an error for ambiguity.
-            return 'bed'
+        elif first_line.startswith('##gff-version 3'):
+            return 'gff'
         else:
             raise SeqFileError(f"Could not guess file format from first line: '{first_line[:100]}...'")
 
@@ -587,7 +575,7 @@ def parse(handle: TextIO, format_: _SUPPORTED_FORMATS = 'guess') -> Generator[Un
         else:
             raise SeqFileError(f'Unsupported SeqFile format or extension: {handle.name}')
     if parser := {'fasta': _parse_fasta, 'gfa': _parse_gfa, 'genbank': _parse_genbank, 'fastq': _parse_fastq,
-                  'bed': _parse_bed}.get(format_):
+                  'gff': _parse_gff}.get(format_):
         yield from parser(handle)
     else:
         raise NotImplementedError(f'Format "{format_}" not supported')
@@ -690,16 +678,29 @@ def _parse_bed(handle: TextIO) -> Generator[Feature, None, None]:
     #     location = Location(int(line[1]), int(line[2]), -1 if (bed_format > 3 and line[5] == '-') else 1, ref=line[0])
 
 
-def _parse_gff(handle: TextIO) -> Generator[Feature, None, None]:
+def _parse_gff(handle: TextIO, feature_kinds: set[str] = frozenset({'CDS'})) -> Generator[Feature, None, None]:
     """
-    Simple GFF3 parser
+    Simple GFF3 parser, see https://ensembl.org/info/website/upload/gff3.html
 
     :param handle: A file handle opened in text-mode / text stream
+    :param feature_kinds: Set of feature kinds to parse; note the 'source' feature will populate the record's qualifiers
     :returns: A Generator of Feature objects
     """
-    raise NotImplementedError
-    # TODO: Implement this
-
+    feature = None
+    for line in handle:
+        if line.startswith('#'):
+            continue
+        if len(parts := line.strip().split('\t')) >= 9 and parts[2] in feature_kinds:
+            feature = Feature(
+                Location(int(parts[3]) - 1, int(parts[4]), -1 if parts[6] == '-' else 1, parent_id=parts[0]),
+                kind=parts[2],
+                qualifiers=[Qualifier(*i.split('=', 1)) for i in parts[8].split(';')] + [
+                    Qualifier('source', parts[1])]
+            )
+            feature.id = feature['ID'] or 'unknown'  # Update the feature.id using the ID qualifier
+            yield feature
+    if feature is None:
+        warn('No features parsed', ParserWarning)
 
 def _parse_genbank(handle: TextIO, feature_kinds: set[str] = frozenset({'CDS'})) -> Generator[Record, None, None]:
     """
@@ -857,9 +858,7 @@ def group_genomes(genomes: Iterable[Union[Path, str, IO, SeqFile]]) -> Generator
         >>>     print(f'{genome:fasta}', end='')
 
     """
-    for id_, files in groupby(sorted(((SeqFile(i) if not isinstance(i, SeqFile) else i) for i in genomes),
-                                     key=attrgetter('id')), key=attrgetter('id')):
-
+    for id_, files in grouper(((SeqFile(i) if not isinstance(i, SeqFile) else i) for i in genomes), 'id'):
         if len(files := list(files)) > 2:
             raise GenomeError(f'More than 2 files found for {id_}: {files}')
         seq_formats, annotation_formats = [], []
@@ -900,6 +899,5 @@ def group_reads(reads: Iterable[Union[Path, str, IO, ReadFile]]) -> Generator[Re
         >>>     print(f'{readset:fasta}', end='')
 
     """
-    for sample_name, files in groupby(sorted(((ReadFile(i) if not isinstance(i, ReadFile) else i) for i in reads),
-                                     key=attrgetter('sample_name')), key=attrgetter('sample_name')):
+    for sample_name, files in grouper(((ReadFile(i) if not isinstance(i, ReadFile) else i) for i in reads), 'sample_name'):
         yield ReadSet(*files, id_=sample_name)

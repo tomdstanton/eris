@@ -11,17 +11,20 @@ from itertools import chain
 
 from eris import ErisWarning, RESOURCES, require
 from eris.db import Database
-from eris.io import Genome, SeqFile, GeneFinderConfig
+from eris.io import Genome, SeqFile, GeneFinderConfig, group_genomes
 from eris.seq import Record, Feature
-from eris.alignment import cull_all, group_alignments
+from eris.alignment import cull_all
 from eris.external import Minimap2, Minimap2AlignConfig, Minimap2IndexConfig
 from eris.graph import Edge
+from eris.utils import grouper
 
 
 # Constants ------------------------------------------------------------------------------------------------------------
-TSV_HEADER = ('Genome\tIS_element\tContext\tFeature\tType\tContig\tStart\tEnd\tStrand\tPartial_start\t'
-                                 'Partial_end\tTranslation_start\tTranslation_end\tPercent_identity\tPercent_coverage\t'
-                                 'Name\tFamily\tGroup\tSynonyms\tOrigin\tIR\tDR\n')
+TSV_HEADER = (
+    'Genome\tIS_element\tContext\tFeature\tType\tContig\tStart\tEnd\tStrand\tPartial_start\t'
+    'Partial_end\tTranslation_start\tTranslation_end\tPercent_identity\tPercent_coverage\tName\tFamily\tGroup\t'
+    'Synonyms\tOrigin\tIR\tDR\n'
+)
 
 # Classes --------------------------------------------------------------------------------------------------------------
 class InsertionSequence:
@@ -73,7 +76,7 @@ class InsertionSequence:
                     f'{self.genome_id}\t{self.feature.id}\tCDS_in_element\t{feature:tsv}\t'
                     f'{feature.location.partial_start}\t{feature.location.partial_end}\t'
                     f'{translation[0]}\t{translation[-1]}\t'
-                    f'-\t-\t-\t-\t-\t-\t-\t-\t-\n'
+                    f'-\t-\t{feature['Name']}\t-\t-\t-\t-\t-\t-\n'
                 )
             for feature in self.CDS_flanking_element:
                 translation = feature.translate()  # Feature should aready have translation Qualifier
@@ -81,7 +84,7 @@ class InsertionSequence:
                     f'{self.genome_id}\t{self.feature.id}\tCDS_flanking_element\t{feature:tsv}\t'
                     f'{feature.location.partial_start}\t{feature.location.partial_end}\t'
                     f'{translation[0]}\t{translation[-1]}\t'
-                    f'-\t-\t-\t-\t-\t-\t-\t-\t-\n'
+                    f'-\t-\t{feature['Name']}\t-\t-\t-\t-\t-\t-\n'
                 )
             return ''.join(results)
         else:
@@ -185,7 +188,7 @@ class Scanner:
         Yields:
             ScannerResult instances for each genome processed or None
         """
-        yield from map(self._pipeline, genomes)
+        yield from map(self._pipeline, group_genomes(genomes))
 
     def _pipeline(self, genome: Union[str, Path, IO, SeqFile, Genome]) -> Union[ScannerResult, None]:
         if not isinstance(genome, Genome):
@@ -196,7 +199,7 @@ class Scanner:
 
         contigs_with_is = []
         with Minimap2(targets=genome, index_config=self.index_config) as aligner:  # Align IS to contigs
-            for contig, alignments in group_alignments(aligner.align(self.db, config=self.align_config), 'target'):
+            for contig, alignments in grouper(aligner.align(self.db, config=self.align_config), 'target'):
                 genome[contig].add_features(*(i.as_feature('mobile_element') for i in cull_all(alignments)))
                 contigs_with_is.append(contig)  # Add contig name to list, also indicator that we have alignments
 
@@ -256,3 +259,8 @@ class Scanner:
                             is_element.CDS_flanking_element.add(gene)  # Use .add()
                             # We stop the traversal down this path by not adding its neighbors to the queue.
         return result
+
+def main():
+    with Scanner() as scanner:
+        genome = Genome.from_file('tests/ERR4920392.gfa', 'tests/ERR4920392.gff3')
+        results = scanner(genome)

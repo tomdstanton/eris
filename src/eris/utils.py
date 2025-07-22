@@ -10,6 +10,8 @@ from io import IOBase
 from argparse import Namespace
 from urllib.request import urlopen, Request
 from urllib.parse import urlencode
+from itertools import groupby
+from operator import attrgetter
 from gzip import (open as gz_open, decompress as gz_decompress)
 from bz2 import (open as bz2_open, decompress as bz2_decompress)
 from lzma import (open as xz_open, decompress as xz_decompress)
@@ -206,6 +208,11 @@ def download(url: Union[str, Request], dest: Union[str, Path] = None, data = Non
         return dest
     else:
         return response.read()
+
+
+def grouper(iterable, key):
+    """Shortcut for sorting and grouping"""
+    yield from groupby(sorted(iterable, key=attrgetter(key)), key=attrgetter(key))
 
 
 def bold(text: str):

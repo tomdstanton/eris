@@ -1,8 +1,7 @@
 """
 Module for parsing, viewing and managing sequence alignments.
 """
-from typing import Iterable, Generator, Literal, Iterator, Any
-from itertools import groupby
+from typing import Iterable, Generator, Literal
 from operator import attrgetter
 from re import compile
 
@@ -189,30 +188,6 @@ class Alignment(HasLocation):
 
 
 # Functions ------------------------------------------------------------------------------------------------------------
-def group_alignments(alignments: Iterable[Alignment], key: str = 'query'
-                     ) -> Generator[tuple[Any, Iterator[Alignment]], None, None]:
-    """
-    Groups alignments by a specified attribute.
-
-    This function takes an iterable of Alignment objects and groups them based on
-    a specified attribute (defaulting to 'query'). The alignments are first sorted
-    by the specified attribute, and then grouped using itertools.groupby, yielding
-    tuples containing the group key and an iterator over the grouped alignments.
-
-    Parameters:
-        alignments: Iterable[Alignment]
-            A collection of Alignment objects to group.
-        key: str, default 'query'
-            The attribute of the Alignment objects to use for grouping.
-
-    Yields:
-        tuple[Any, Iterator[Alignment]]
-            A tuple consisting of the group key and an iterator over the grouped
-            Alignment objects.
-    """
-    yield from groupby(sorted(alignments, key=attrgetter(key)), key=attrgetter(key))
-
-
 def cull(keep: Alignment, alignments: Iterable[Alignment], max_overlap_fraction: float = 0.1
          ) -> Generator[Alignment, None, None]:
     """

@@ -10,10 +10,7 @@ eris = "eris.cli:main"
 
 [project.optional-dependencies]
 test = ["pytest"]
-docs = [
-    "mkdocs-material",
-    "mkdocs-api-autonav>=0.3.0,<0.4"
-]
+docs = ["mkdocs-material", "mkdocs-api-autonav>=0.3.0,<0.4"]
 orf = ["pyrodigal>=2.1.0"]
 dev = ["eris[test,docs,orf]"]
 
@@ -32,8 +29,6 @@ platforms = ["osx-arm64", "linux-64"]
 eris = { path = ".", editable = true }
 
 [tool.pixi.dependencies]
-#pixi-pycharm = ">=0.0.8,<0.0.9"
-#frag_gene_scan_rs = ">=1.1.0,<2"
 minimap2 = ">=2.30,<3"
 
 [tool.pixi.environments]
@@ -41,3 +36,8 @@ default = {features = [], solve-group = "default"}
 test = {features = ["test"], solve-group = "default"}
 docs = {features = ["docs"], solve-group = "default"}
 dev = {features = ["dev"], solve-group = "default"}
+orf = {features = ["orf"], solve-group = "default"}
+
+[tool.pixi.feature.dev.dependencies]
+frag_gene_scan_rs = ">=1.1.0,<2"
+pixi-pycharm = ">=0.0.8,<0.0.9"
