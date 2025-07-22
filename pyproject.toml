@@ -1,6 +1,6 @@
 [project]
 authors = [{name = "Tom Stanton", email = "tomdstanton@gmail.com"}]
-name = "eris-python"  # eris is already taken on pypi, also someone may make a rust implementation
+name = "eris"  # eris is already taken on pypi, also someone may make a rust implementation
 description = "Uncovering IS-mediated discord in bacterial genomes"
 requires-python = ">= 3.9"
 dynamic = ["urls", "version"]
