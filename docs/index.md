@@ -34,15 +34,29 @@ pyrodigal >=3.5.0 (for ORF prediction only)
 
 ### From source:
 ```shell
-git clone https://github.com/tomdstanton/eris.git
-cd eris
-pip install -e .
-# OR
+# First clone the repo
+git clone https://github.com/tomdstanton/eris.git && cd eris
+# Then install with pip
+pip install .  # -e for editable, developers only!
+# or install with pixi
 pixi install
 ```
 
+**NOTE: For [Pyrodigal](https://pyrodigal.readthedocs.io/en/stable/), you should install the `orf` or `dev`
+environments with `pip` or `[pixi](https://pixi.sh/dev/)`**
+
+```shell
+# First clone the repo
+git clone https://github.com/tomdstanton/eris.git && cd eris
+# Then install with pip
+pip install .[orf]  # -e for editable, developers only!
+# or install with pixi
+pixi install -e orf
+```
+
 ## Usage 🧑‍💻
-The information below explains how to use the `eris` CLI. For API usage, please refer to the `docs/`.
+The information below explains how to use the `eris` CLI. 
+For API usage, please refer to the [reference documentation](https://tomdstanton.github.io/eris/reference/eris/).
 
 ### Scan 🔍
 
@@ -86,23 +100,25 @@ For more help, visit: eris.readthedocs.io
 ```
 
 #### The algorithm 
-- Given a bacterial genome as an assembly (FASTA), assembly-graph (GFA) or annotation file (Genbank), the `scan` pipeline
-will align IS element nucleotide sequences from the ISFinder database against the assembly contigs using minimap2.
-- These alignments are then sorted by their target contig, and culled such that each region aligned contains the highest 
+1. Given a bacterial genome as an assembly (FASTA), assembly-graph (GFA) or annotation file (Genbank), the `scan` pipeline
+will align IS element nucleotide sequences from the [ISFinder](https://isfinder.biotoul.fr/) database against the 
+assembly contigs using [minimap2](https://lh3.github.io/minimap2/).
+1. These alignments are then sorted by their target contig, and culled such that each region aligned contains the highest 
 scoring query.
-- Each IS element alignment is then considered to be a "mobile-element" feature, and added to the list
+1. Each IS element alignment is then considered to be a "mobile-element" feature, and added to the list
 of features on the respective contig.
-- If the genome is from a sequence file (FASTA/GFA), ORFs are predicted with Pyrodigal and CDS features are added to
-each contig.
-- The genome is then converted into a **feature graph**, whereby features on each contig, sorted by their respective
+1. If the genome is from a sequence file (FASTA/GFA), ORFs are predicted with 
+[Pyrodigal](https://pyrodigal.readthedocs.io/en/stable) and CDS features are added to each contig.
+1. The genome is then converted into a **feature graph**, whereby features on each contig, sorted by their respective
 start coordinates, are connected to their flanking features; and if the contig is connected to other contigs 
 (GFA input), features on the termini of connected contigs are also connected to each other.
-- For each IS element feature, the **[Breadth-first search](https://en.wikipedia.org/wiki/Breadth-first_search) (BFS)**
+1. For each IS element feature, the **[Breadth-first search](https://en.wikipedia.org/wiki/Breadth-first_search) (BFS)**
 algorithm traverses the **feature graph** to find CDS that either **overlap** (part of the element) or **flank**
 the element.
 
 #### Performance 
-`eris scan` is very fast, especially when providing annotations or once the `pyrodigal.GeneFinder` instance has been
+`eris scan` is very fast, especially when providing annotations or once the 
+[`pyrodigal.GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#genefinder) instance has been
 trained (this occurs on the first input genome); it should only take <1 second per assembly 🚀
 
 ### Outputs
@@ -114,7 +130,7 @@ can be written to separate files via the respective CLI flags.
 
 The TSV tabular output reports one line per **feature** of interest, which can either be the IS element itself from the
 resulting alignments, the CDS _inside_ the IS element, or the CDS _flanking_ the IS element. If the context is the
-IS element, information about the element from ISFinder will be reported. If the context is a CDS, information about
+IS element, information about the element from [ISFinder](https://isfinder.biotoul.fr/) will be reported. If the context is a CDS, information about
 the ORF/translation will be reported.
 
 The TSV columns are as follows:

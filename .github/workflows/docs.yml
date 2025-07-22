@@ -17,8 +17,6 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          # Your pyproject.toml requires >= 3.9. Pinning to a specific version
-          # ensures your builds are stable and reproducible.
           python-version: '3.11'
 
       - name: Cache dependencies
@@ -32,7 +30,7 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        run: pip install .[docs]
+        run: pip install .[docs,orf]
 
       - name: Deploy documentation
         run: python -m mkdocs gh-deploy --force

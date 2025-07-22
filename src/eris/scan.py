@@ -127,11 +127,11 @@ class Scanner:
     (including potential graph traversal), and are returned in a result object for later reporting.
 
     Attributes:
-        db: The ISFinder sequence Database object
+        db: The ISFinder sequence `eris.Database` object
         align_config: Minimap2 alignment configuration
         index_config: Minimap2 index configuration
-        gene_finder_config: Configuration for the pyrodigal GeneFinder instance if needed
-        pool: A thread or process pool executor instance if needed
+        gene_finder_config: Configuration for the `pyrodigal.GeneFinder` instance if needed
+        pool: A ThreadPoolExecutor or ProcessPoolExecutor instance if needed
 
     Examples:
         >>> from eris.scanner import Scanner
@@ -141,11 +141,11 @@ class Scanner:
     """
     def __init__(self, align_config: Minimap2AlignConfig = None, index_config: Minimap2IndexConfig = None,
                  gene_finder_config: GeneFinderConfig = None, pool: Executor = None):
-        self.db = Database()
-        self.align_config = align_config or Minimap2AlignConfig(c=True)
-        self.index_config = index_config or Minimap2IndexConfig()
-        self.gene_finder_config = gene_finder_config or GeneFinderConfig()
-        self.pool = pool  # Only init the pool if we need it for the gene finder
+        self.db: Database = Database()
+        self.align_config: Minimap2AlignConfig = align_config or Minimap2AlignConfig(c=True)
+        self.index_config: Minimap2IndexConfig = index_config or Minimap2IndexConfig()
+        self.gene_finder_config: GeneFinderConfig = gene_finder_config or GeneFinderConfig()
+        self.pool: Executor = pool  # Only init the pool if we need it for the gene finder
         self._gene_finder: 'pyrodigal.GeneFinder' = None
 
     @property

@@ -5,41 +5,16 @@ from typing import Callable
 from warnings import warn
 from functools import wraps
 from importlib import import_module
-from importlib.resources import files
-from importlib.metadata import metadata
-from random import Random
 from pathlib import Path
-try:
-    from os import process_cpu_count as cpu_count
-except ImportError:
-    from os import cpu_count
 
-
-# Constants ------------------------------------------------------------------------------------------------------------
-__all__ = [
-    "scan",
-    "alignment",
-    "alphabet",
-    "cli",
-    "db",
-    "io",
-    "external",
-    "seq",
-    "graph",
-    "utils"
-]
 
 # Classes --------------------------------------------------------------------------------------------------------------
 class Resources:
     """
-    Holds global resources for eris.
+    Holds global resources for this package which are generated on demand.
 
     Attributes:
         package: Name of the package
-        data: Path to the package data
-        metadata: Package metadata
-        available_cpus: Number of available CPUs.
-        rng: A random number generator instance, can be reused
         optional_packages: Set of optional packages to check for
     """
     def __init__(self, *optional_packages: str):
@@ -48,27 +23,44 @@ class Resources:
             optional_packages: Optional packages to check for, e.g. 'numpy', 'pandas'
         """
         self.package: str = Path(__file__).parent.name
-        self.data: 'Traversable' = files(self.package) / 'data'
+        self.optional_packages: set[str] = set(filter(self._check_module, optional_packages))
+        self._data: 'Traversible' = None  # Generated on demand
         self._metadata: 'PackageMetadata' = None  # Generated on demand
         self._available_cpus: int = None  # Generated on demand
-        self._rng: Random = None  # Generated on demand
-        self.optional_packages: set[str] = set(filter(self._check_module, optional_packages))
+        self._rng: 'Random' = None  # Generated on demand
+
+    @property
+    def data(self) -> 'Traversable':
+        """Path to the package data"""
+        if self._data is None:
+            from importlib.resources import files
+            self._data = files(self.package) / 'data'
+        return self._data
 
     @property
     def metadata(self) -> 'PackageMetadata':
+        """Package metadata"""
         if self._metadata is None:
+            from importlib.metadata import metadata
             self._metadata = metadata(self.package)
         return self._metadata
 
     @property
-    def rng(self) -> Random:
+    def rng(self) -> 'Random':
+        """A random number generator instance, can be reused"""
         if self._rng is None:
+            from random import Random
             self._rng = Random()
         return self._rng
 
     @property
     def available_cpus(self):
+        """Number of available CPUs"""
         if self._available_cpus is None:
+            try:
+                from os import process_cpu_count as cpu_count
+            except ImportError:
+                from os import cpu_count
             self._available_cpus = cpu_count()
         return self._available_cpus
 

@@ -1,5 +1,5 @@
 # /Users/tsta0015/Programming/eris/mkdocs.yml
-site_name: "eris"
+site_name: "eris 🧬🧞‍♀🔮️"
 site_url: https://tomdstanton.github.io/eris
 repo_url: https://github.com/tomdstanton/eris
 site_description: "Uncovering IS-mediated discord in bacterial genomes."
@@ -11,12 +11,14 @@ nav:
 
 theme:
   name: "material"
+  icon:
+    logo: 'material/dna'
   homepage: https://tomdstanton.github.io/eris
   palette:
     - scheme: default
       primary: deep purple
       toggle:
-        icon: material/brightness-7 
+        icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
       primary: deep purple
@@ -29,7 +31,11 @@ theme:
 
 markdown_extensions:
   - admonition
-  
+#  - attr_list
+#  - pymdownx.emoji:
+#      emoji_index: !!python/name:material.extensions.emoji.twemoji
+#      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
 plugins:
   - search
   - mkdocstrings:
@@ -38,26 +44,7 @@ plugins:
           import:
             - https://docs.python.org/3/objects.inv
           options:
-            docstring_section_style: list
             docstring_style: "google"
-            filters: ["!^_"]
-            heading_level: 1
-            merge_init_into_class: true
-            parameter_headings: true
-            separate_signature: true
-            show_root_heading: true
-            show_signature_annotations: true
-            show_symbol_type_heading: true
-            show_symbol_type_toc: true
-            summary: true
   - api-autonav:
       modules: ['src/eris']
-      module_options: { }
       nav_section_title: "API Reference"
-      api_root_uri: "reference"
-      nav_item_prefix: "<code class='doc-symbol doc-symbol-nav doc-symbol-module'></code>"
-      exclude_private: true
-      on_implicit_namespace_package: "warn"
-      exclude:
-        - "src/pan.py"
-        - "src/mapper.py"

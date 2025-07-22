@@ -1,3 +1,7 @@
+"""
+Module to handle biological sequence alphabets. Mostly redundant, but kept for random sequence generation and encoding.
+"""
+
 
 # Classes --------------------------------------------------------------------------------------------------------------
 class AlphabetError(Exception):
@@ -5,6 +9,9 @@ class AlphabetError(Exception):
 
 
 class Alphabet:
+    """
+    A class to represent an alphabet of symbols.
+    """
     def __init__(self, symbols: str):
         self._symbols = symbols
         self._set: frozenset[str] = frozenset(symbols)
