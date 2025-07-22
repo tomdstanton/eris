@@ -17,20 +17,10 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          # Create a cache key based on the runner's OS, Python version,
-          # and a hash of your pyproject.toml. This is the most reliable way.
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install .[docs,orf]
+        run: pip install -e .[docs,orf]
 
       - name: Deploy documentation
-        run: python -m mkdocs gh-deploy --force
+        run: mkdocs gh-deploy --force

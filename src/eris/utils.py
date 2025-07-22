@@ -9,6 +9,7 @@ from typing import IO, Generator, Union, Literal
 from io import IOBase
 from argparse import Namespace
 from urllib.request import urlopen, Request
+from urllib.parse import urlencode
 from gzip import (open as gz_open, decompress as gz_decompress)
 from bz2 import (open as bz2_open, decompress as bz2_decompress)
 from lzma import (open as xz_open, decompress as xz_decompress)
@@ -182,7 +183,7 @@ def decompress(
         return buffer if method == 'uncompressed' else _DECOMPRESS[method](buffer)
 
 
-def download(url: Union[str, Request], dest: Union[str, Path] = None) -> Union[Path, bytes, None]:
+def download(url: Union[str, Request], dest: Union[str, Path] = None, data = None, encode_data: bool = False) -> Union[Path, bytes, None]:
     """
     Downloads a file from a URL to a destination or returns the data as bytes.
 
@@ -191,8 +192,10 @@ def download(url: Union[str, Request], dest: Union[str, Path] = None) -> Union[P
     :return: Path to the downloaded file or the data as bytes.
     :raises ValueError: If no data is written to the destination file.
     """
+    if data and encode_data:
+        data = urlencode(data).encode('utf-8')
     if not isinstance(url, Request):
-        url = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        url = Request(url, headers={'User-Agent': 'Mozilla/5.0'}, data=data)
     response = urlopen(url)
     if dest:
         with open(dest, mode='wb') as handle:

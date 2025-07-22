@@ -2,6 +2,9 @@
 Module for managing the IS database from ISFinder.
 """
 from csv import DictReader
+# from re import compile, MULTILINE
+# import ssl  # NOT recommended but only way to access ISFinder database
+# ssl._create_default_https_context = ssl._create_unverified_context
 
 from eris import RESOURCES
 from eris.io import SeqFile
@@ -16,8 +19,22 @@ _CSV_URL = f'{_BASE_URL}{_CSV_NAME}'
 _FNA_URL = f'{_BASE_URL}{_FNA_NAME}'
 _CSV_PATH = RESOURCES.data / _CSV_NAME
 _FNA_PATH = RESOURCES.data / _FNA_NAME
-# _HMMS = ['PF01548', 'PF01609', 'PF01797']
-# _CMS = ['RF03014', 'RF03015']
+# _HMMS = ['PF01548', 'PF01609', 'PF01797']  # If we ever need hmmer
+# _CMS = ['RF03014', 'RF03015']  # If we ever need infernal
+# IS Finder URLs -------------------------------------------------------------------------------------------------------
+# _ISFINDER_BASE_URL = 'https://www-is.biotoul.fr/scripts/'
+# _ISFINDER_SEARCH_URL = 'search-db.php'
+# # Regex used to match desired groups (link names, IS name, IS sequence)
+# _LINK_REGEX = compile(r'(ficheIS.php\?name=[^\']+)')
+# _NUCL_REGEX = compile(
+#     r"<div><p class='entete_propriete'>DNA sequence </p>.*?\n*?<div class='seq'>(?P<seq>(?:.|\n)+?)</div>", MULTILINE)
+# _PROT_REGEX = compile(
+#     r"class='entete_propriete'>ORF sequence : </p>.*?\n*?<div class='seq'>(?P<seq>(?:.|\n)+?)</div>", MULTILINE)
+# _STRIP_TAG_REGEX = compile(r'(<.+?>\s?)')
+# _ORGANISM_REGEX = compile(r'<td><div class="ascenseurAuto">(.*?)</div></td>')
+# _FAMILY_REGEX = compile(r"class='entete_propriete'>Family </span>(.*?)</li>")
+# _GROUP_REGEX = compile(r"class='entete_propriete'>Group </span>(.*?)</li>")
+# _LENGTH_REGEX = compile(r"class='entete_propriete'>IS Length : </span>(.*?)bp</div>")
 
 
 # Classes --------------------------------------------------------------------------------------------------------------
@@ -62,3 +79,22 @@ class Database:
     def __iter__(self):
         return iter(self.records.values())
 
+# Functions ------------------------------------------------------------------------------------------------------------
+# def _fetch_data_from_link(link: str):
+#     if html := download(link):
+#         nucl_seq = _STRIP_TAG_REGEX.sub('', n.group('seq')).strip().upper() if (n := _NUCL_REGEX.search(html)) else ''
+#         prot_seq = _STRIP_TAG_REGEX.sub('', n.group('seq')).strip().upper() if (n := _PROT_REGEX.search(html)) else ''
+#         group = n.group(1).strip() if (n := _GROUP_REGEX.search(html)) else ''
+#         family = n.group(1).strip() if (n := _FAMILY_REGEX.search(html)) else ''
+#         length = n.group(1).strip() if (n := _LENGTH_REGEX.search(html)) else ''
+#         organism = n.group(1).strip() if (n := _ORGANISM_REGEX.search(html)) else ''
+#
+#
+# def _get_links_from_search(query):
+#     """
+#     Process search query data and prepare for a POST method request
+#     """
+#     data = {'name': query, 'namecond': 'contains', 'MGEtype': 'all', 'Onsubmit': 'Submit'}
+#     result = download(f'{_ISFINDER_BASE_URL}{_ISFINDER_SEARCH_URL}', data=data, encode_data=True).decode()
+#     return _LINK_REGEX.findall(result)  # Find all links in HTML source file
+#

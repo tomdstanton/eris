@@ -1,6 +1,6 @@
 [project]
 authors = [{name = "Tom Stanton", email = "tomdstanton@gmail.com"}]
-name = "eris"
+name = "eris-python"  # eris is already taken on pypi, also someone may make a rust implementation
 description = "Uncovering IS-mediated discord in bacterial genomes"
 requires-python = ">= 3.9"
 dynamic = ["urls", "version"]
@@ -11,7 +11,6 @@ eris = "eris.cli:main"
 [project.optional-dependencies]
 test = ["pytest"]
 docs = [
-    "mkdocs",
     "mkdocs-material",
     "mkdocs-api-autonav>=0.3.0,<0.4"
 ]
