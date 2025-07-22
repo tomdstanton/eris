@@ -43,7 +43,7 @@ pixi install
 ```
 
 **NOTE: For [Pyrodigal](https://pyrodigal.readthedocs.io/en/stable/), you should install the `orf` or `dev`
-environments with `pip` or `[pixi](https://pixi.sh/dev/)`**
+environments with `pip` or [`pixi`](https://pixi.sh/dev/)**
 
 ```shell
 # First clone the repo
