@@ -81,7 +81,7 @@ class ResultWriter:
             if handle.name not in {'<stdout>', '<stderr>'}:  # These handles cannot be opened or closed
                 handle.close()
 
-    def _write(self, fmt: str, out: Union[str, Path, IOBase], result, open_mode: str) -> int:
+    def _write(self, fmt: str, out: Union[str, Path, IO], result, open_mode: str) -> int:
         if fmt in self._handles:
             # Acquire lock for the specific handle to ensure thread-safe writing
             # with self._handle_locks[out]:
@@ -222,6 +222,11 @@ def scan_parser(subparsers):
         help='Genome(s) in FASTA, GFA or Genbank format;\n'
              'reads from stdin by default.'
    )
+    inputs.add_argument(
+        '-a', '--annotations', nargs='*', metavar='', type=Path,
+        help='Optional genome annotations in GFF3/BED format;\n'
+             'These will be matched up to input genomes (FASTA/GFA) with corresponding filenames'
+    )
     outputs = parser.add_argument_group(
         bold('Outputs'),
         '\nNote, text outputs accept "-" or "stdout" for stdout'
@@ -248,6 +253,8 @@ def scan_parser(subparsers):
 
 
 # Main CLI Entry Point -------------------------------------------------------------------------------------------------
+# /Users/tsta0015/Programming/eris/src/eris/cli.py
+
 def main():
     parser = ArgumentParser(
         description=get_logo('Uncovering IS-mediated discord in bacterial genomes'), epilog=_EPILOG,
@@ -264,13 +271,22 @@ def main():
     args = parser.parse_args()
 
     if args.command == 'scan':
-        from eris.scan import Scanner, TSV_HEADER
-        with (
-            Scanner() as scanner,
-            ResultWriter(
-                ('tsv', args.tsv), ('faa', args.faa), ('ffn', args.ffn),
-                tsv_header=TSV_HEADER, no_tsv_header=args.no_tsv_header
-            ) as writer
-        ):
-            for result in ProgressBar(args.genome, scanner, "Scanning genomes"):
-                writer.write(result)
+        from eris.scan import Scanner, ScannerResult, TSV_HEADER
+
+        with Scanner() as scanner:
+            annotations = {p.stem: p for p in args.annotations} if args.annotations else {}
+
+            # Define a helper function to be the ProgressBar's callable.
+            def _process_genome(genome_input: Union[str, Path, IO]) -> Union[ScannerResult, None]:
+                if isinstance(genome_input, IOBase) or genome_input in {'-', 'stdin'}:
+                    return scanner(Genome.from_file(genome_input))
+                else:
+                    genome_input = Path(genome_input) if isinstance(genome_input, str) else genome_input
+                    return scanner(Genome.from_file(genome_input, annotations=annotations.get(genome_input.stem)))
+
+            with ResultWriter(
+                    ('tsv', args.tsv), ('faa', args.faa), ('ffn', args.ffn),
+                    tsv_header=TSV_HEADER, no_tsv_header=args.no_tsv_header
+                ) as writer:
+                for result in ProgressBar(args.genome, _process_genome, "Scanning genomes"):
+                    writer.write(result)

@@ -3,7 +3,7 @@ Module for parsing and managing bacterial sequence files and data.
 """
 from functools import partial
 from warnings import warn
-from re import compile
+from re import compile as regex
 from pathlib import Path
 from typing import Union, Generator, IO, Literal, Iterable, TextIO, get_args, Callable
 from concurrent.futures import Executor, ThreadPoolExecutor
@@ -23,10 +23,9 @@ from eris.graph import Graph, Edge
 from eris.utils import xopen, Config, grouper
 
 # Constants ------------------------------------------------------------------------------------------------------------
-_SUPPORTED_FORMATS = Literal['fasta', 'gfa', 'genbank', 'fastq', 'gff']
+_SUPPORTED_FORMATS = Literal['fasta', 'gfa', 'genbank', 'fastq', 'gff', 'bed']
 _TAG2TYPE = {'f': float, 'i': int, 'Z' : str}  # See: https://github.com/GFA-spec/GFA-spec/blob/master/GFA1.md#optional-fields
-_FEATURE_KINDS = {'CDS'}  # 'gene', 'misc_feature', 'ncRNA', 'rRNA', 'regulatory', 'tRNA', 'tmRNA'}
-_SEQUENCE_FILE_REGEX = compile(
+_SEQUENCE_FILE_REGEX = regex(
     r'\.('
     r'(?P<fasta>f(asta|a|na|fn|as|aa))|'
     r'(?P<fastq>f(ast)?q)|'
@@ -38,12 +37,12 @@ _SEQUENCE_FILE_REGEX = compile(
 )
 # Regex for Illumina BaseSpace read files as specified here:
 # https://support.illumina.com/help/BaseSpace_Sequence_Hub_OLH_009008_2/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm
-_ILLUMINA_READ_REGEX = compile(
+_ILLUMINA_READ_REGEX = regex(
     r'(?P<sample_name>.+)_S(?P<sample_number>\d+)_L(?P<lane_number>\d+)_R(?P<read_number>\d+)_(?P<index_number>\d+)$')
-_SHORT_READ_REGEX = compile(r'(?P<sample_name>.+)_R?(?P<read_number>[12])$')
-_TOPOLOGY_REGEX = compile(r'(?i)(\bcircular\b|\bcircular\s*=\s*true\b)')
-# _COPY_NUMBER_REGEX = compile(r"depth=(\d+\.\d+)x")
-_GENBANK_LOCATION_REGEX = compile(r'(?P<partial_start><)?(?P<start>[0-9]+)\.\.(?P<partial_end>>)?(?P<end>[0-9]+)')
+_SHORT_READ_REGEX = regex(r'(?P<sample_name>.+)_R?(?P<read_number>[12])$')
+_TOPOLOGY_REGEX = regex(r'(?i)(\bcircular\b|\bcircular\s*=\s*true\b)')
+# _COPY_NUMBER_REGEX = regex(r"depth=(\d+\.\d+)x")
+_GENBANK_LOCATION_REGEX = regex(r'(?P<partial_start><)?(?P<start>[0-9]+)\.\.(?P<partial_end>>)?(?P<end>[0-9]+)')
 
 # Classes --------------------------------------------------------------------------------------------------------------
 @dataclass
@@ -60,6 +59,15 @@ class GeneFinderConfig(Config):
 
 class ParserWarning(ErisWarning):
     pass
+
+class ParserError(Exception):
+    pass
+
+
+class Parser:
+    def __init__(self):
+        pass
+
 
 class SeqFileWarning(ErisWarning):
     pass
@@ -86,7 +94,7 @@ class SeqFile:
         self._from_stream: bool = False
         self._open_func: Union[None, Callable] = None
 
-        if file == '-':  # Handle stdin symbol, the rest of the logic should deal with the stream
+        if file in {'-', 'stdin'}:  # Handle stdin symbol, the rest of the logic should deal with the stream
             file = stdin
 
         if hasattr(file, 'read') and not isinstance(file, (str, Path)):  # --- Handle IO Stream Input ---
@@ -105,12 +113,10 @@ class SeqFile:
 
             # Now, we can safely open and guess from the temp file.
             if self.format is None:
-                try:
-                    # xopen handles decompression automatically based on magic numbers
+                try:  # xopen handles decompression automatically based on magic numbers
                     with xopen(self.path, mode='rt') as f:
                         self.format = _guess_format_from_handle(f)
-                except Exception as e:
-                    # Clean up the temp file on failure
+                except Exception as e:  # Clean up the temp file on failure
                     self.path.unlink(missing_ok=True)
                     raise e
 
@@ -120,12 +126,10 @@ class SeqFile:
         elif isinstance(file, (str, Path)):  # --- Handle File Path Input ---
             self.path = file if isinstance(file, Path) else Path(file)
             if m := _SEQUENCE_FILE_REGEX.search(self.path.name):
-                self.id = self.path.name.rstrip(m.group())
-                # If format is not provided, guess from extension.
+                self.id = self.path.name.rstrip(m.group())  # If format is not provided, guess from extension.
                 self.format = format_ or next(fmt for fmt in get_args(_SUPPORTED_FORMATS) if m[fmt])
                 self._open_func = partial(xopen, self.path, method=m['compression'] or 'uncompressed', mode='rt')
-            else:
-                # If no valid extension, try guessing from content
+            else:  # If no valid extension, try guessing from content
                 if self.format is None:
                     try:
                         with xopen(self.path, mode='rt') as f:
@@ -149,10 +153,8 @@ class SeqFile:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # Ensure the primary handle (_handle) is closed
-        self.close()
-        # Clean up the temporary file *only* if it was created from a stream
-        if self._from_stream:
+        self.close()  # Ensure the primary handle (_handle) is closed
+        if self._from_stream:  # Clean up the temporary file *only* if it was created from a stream
             try:  # Use missing_ok=True for robustness against race conditions etc.
                 self.path.unlink(missing_ok=True)
             except OSError as e:  # Log or warn about failure to delete temp file
@@ -193,8 +195,7 @@ class SeqFile:
         """Resets the file to be read from the beginning."""
         # The simplest way to rewind when using xopen dynamically is to close
         # the current handle and let _ensure_handle_open get a new one.
-        self.close()
-        # Next call to read() or __iter__() will automatically reopen via _ensure_handle_open()
+        self.close()  # Next call to read() or __iter__() will automatically reopen via _ensure_handle_open()
 
     def __iter__(self) -> Generator[Union['Record', 'Edge', 'Feature'], None, None]:
         """Returns an iterator (generator) over records in the file."""
@@ -478,18 +479,18 @@ class Genome:
         Predicts ORFs in the Genome using Pyrodigal.
 
         Parameters:
-            gene_finder: An optional pre-trained `pyrodigal.GeneFinder` instance. If not provided, one will be
-                         initialized using the `config` parameter.
-            pool: An optional `Executor` (e.g., `ThreadPoolExecutor` or `ProcessPoolExecutor`)
-                  to parallelize gene finding across contigs. If `None`, a `ThreadPoolExecutor` will be created.
-            config: A `GeneFinderConfig` object to configure the Pyrodigal GeneFinder. Only used if `gene_finder`
-                    is `None`.
+            gene_finder: An optional pre-trained pyrodigal.GeneFinder instance. If not provided, one will be
+                         initialized using the config parameter.
+            pool: An optional Executor (e.g., ThreadPoolExecutor or ProcessPoolExecutor)
+                  to parallelize gene finding across contigs. If None, a ThreadPoolExecutor will be created.
+            config: A GeneFinderConfig object to configure the Pyrodigal GeneFinder. Only used if gene_finder
+                    is None.
 
         Yields:
-            `Feature` objects representing the predicted CDS (Coding Sequence) genes.
+            Feature objects representing the predicted CDS (Coding Sequence) genes.
 
         Notes:
-            - Requires `pyrodigal` to be installed.
+            - Requires pyrodigal to be installed.
         """
         from pyrodigal import __version__ as _pyrodigal_version
         from pyrodigal import Gene
@@ -560,14 +561,17 @@ def _guess_format_from_handle(handle: TextIO) -> _SUPPORTED_FORMATS:
         raise SeqFileError("Failed to read from stream to guess format.") from e
 
 
-def parse(handle: TextIO, format_: _SUPPORTED_FORMATS = 'guess') -> Generator[Union[Record, Edge], None, None]:
+def parse(handle: TextIO, format_: _SUPPORTED_FORMATS = 'guess', *args, **kwargs) -> Generator[Union[Record, Edge, Feature], None, None]:
     """
     Simple parser for fasta, gfa and genbank formats,
-    similar to `Biopython <https://biopython.org/docs/latest/api/Bio.SeqIO.html#Bio.SeqIO.parse>`_
+    similar to Biopython <https://biopython.org/docs/latest/api/Bio.SeqIO.html#Bio.SeqIO.parse>
 
-    :param handle: A file handle opened in text-mode / text stream
-    :param format_: The format of the file; must be one of the supported formats or guess by default
-    :returns: A Generator of Record objects
+    Parameters:
+        handle: A file handle opened in text-mode / text stream
+        format_: The format of the file; must be one of the supported formats or guess by default
+
+    Yields:
+        Record, Feature or Edge objects
     """
     if format_ == 'guess':
         if m := _SEQUENCE_FILE_REGEX.search(handle.name):
@@ -575,8 +579,8 @@ def parse(handle: TextIO, format_: _SUPPORTED_FORMATS = 'guess') -> Generator[Un
         else:
             raise SeqFileError(f'Unsupported SeqFile format or extension: {handle.name}')
     if parser := {'fasta': _parse_fasta, 'gfa': _parse_gfa, 'genbank': _parse_genbank, 'fastq': _parse_fastq,
-                  'gff': _parse_gff}.get(format_):
-        yield from parser(handle)
+                  'gff': _parse_gff, 'bed': _parse_bed}.get(format_):
+        yield from parser(handle, *args, **kwargs)
     else:
         raise NotImplementedError(f'Format "{format_}" not supported')
 
@@ -654,36 +658,35 @@ def _parse_gfa(handle: TextIO) -> Generator[Union[Record, Edge], None, None]:
         warn('No records parsed', ParserWarning)
 
 
-def _parse_bed(handle: TextIO) -> Generator[Feature, None, None]:
+def _parse_bed(handle: TextIO, feature_kinds: set[str] = frozenset({'CDS'})) -> Generator[Feature, None, None]:
     """
-    Simple BED parser
+    Simple BED parser, see https://samtools.github.io/hts-specs/BEDv1.pdf
     
     :param handle: A file handle opened in text-mode / text stream
+    :param feature_kinds: Set of feature kinds to parse
     :returns: A Generator of Feature objects
     """
-    raise NotImplementedError
-    # TODO: Implement this
-    # See: https://samtools.github.io/hts-specs/BEDv1.pdf
-    # bed_format = 0
-    # while True:
-    #     if not (line := handle.readline().strip()):  # 1. Read the header line
-    #         break  # End of file
-    #     if n_columns := len(line := line.split('\t')) < 3:
-    #         raise ValueError(f"Expected at least 3 columns but got {n_columns}")
-    #     if not bed_format:
-    #         bed_format = n_columns  # Use header to determine the format of the file, e.g. BED12 or BED6
-    #     elif n_columns != bed_format:
-    #         raise ValueError(f"Expected {bed_format} BED columns, but got {n_columns}")
-    #
-    #     location = Location(int(line[1]), int(line[2]), -1 if (bed_format > 3 and line[5] == '-') else 1, ref=line[0])
+    feature = None
+    for line in handle:  # Note, this only supports BED10
+        if len(parts := line.strip().split('\t')) >= 10 and parts[7] in feature_kinds:
+            feature = Feature(
+                Location(int(parts[1]), int(parts[2]), -1 if parts[5] == '-' else 1, parent_id=parts[0]),
+                kind=parts[7],
+                qualifiers=[Qualifier(*i.split('=', 1)) for i in parts[9].split(';')] + [
+                    Qualifier('source', parts[6])]
+            )
+            feature.id = feature['ID'] or 'unknown'  # Update the feature.id using the ID qualifier
+            yield feature
 
+    if feature is None:
+        warn('No features parsed', ParserWarning)
 
 def _parse_gff(handle: TextIO, feature_kinds: set[str] = frozenset({'CDS'})) -> Generator[Feature, None, None]:
     """
     Simple GFF3 parser, see https://ensembl.org/info/website/upload/gff3.html
 
     :param handle: A file handle opened in text-mode / text stream
-    :param feature_kinds: Set of feature kinds to parse; note the 'source' feature will populate the record's qualifiers
+    :param feature_kinds: Set of feature kinds to parse
     :returns: A Generator of Feature objects
     """
     feature = None
@@ -701,6 +704,7 @@ def _parse_gff(handle: TextIO, feature_kinds: set[str] = frozenset({'CDS'})) -> 
             yield feature
     if feature is None:
         warn('No features parsed', ParserWarning)
+
 
 def _parse_genbank(handle: TextIO, feature_kinds: set[str] = frozenset({'CDS'})) -> Generator[Record, None, None]:
     """
@@ -727,12 +731,10 @@ def _parse_genbank(handle: TextIO, feature_kinds: set[str] = frozenset({'CDS'}))
 
 def _parse_genbank_record(record: list[str], feature_kinds: set[str] = frozenset({'CDS'})) -> Record:
     """Parser for a single record in Genbank format"""
-    # attributes, features = '\n'.join(record).split('FEATURES', 1)
-    # features, origin = features.split('\nORIGIN\n', 1)
     features, origin = '\n'.join(record).split('FEATURES', 1)[1].split('\nORIGIN\n', 1)
     record = Record(
         id_=record[0].split()[1], desc=record[1].split(maxsplit=1)[1],
-        seq=parse_genbank_origin(origin.strip().split('\n')),
+        seq=Seq(''.join(chain.from_iterable(i.split()[1:] for i in origin if i)), alphabet='DNA'),
         qualifiers=[Qualifier('topology', 'circular' if _TOPOLOGY_REGEX.search(record[0]) else 'linear')]
     )
     current_feature = []
@@ -753,10 +755,6 @@ def _parse_genbank_record(record: list[str], feature_kinds: set[str] = frozenset
             else:
                 record.features.append(feature)
     return record
-
-
-def parse_genbank_origin(origin: list[str]) -> Seq:
-    return Seq(''.join(chain.from_iterable(i.split()[1:] for i in origin if i)), alphabet='DNA')
 
 
 def _parse_genbank_feature(feature_lines: list[str], feature_kinds: set[str] = frozenset({'CDS'}), parent_id: str = None
@@ -837,45 +835,45 @@ def _parse_tags(line: str, col_delim: str = '\t', tag_delimiter: str = ':'
             yield Qualifier(tag, _TAG2TYPE.get(typ, str)(val))
 
 
-def group_genomes(genomes: Iterable[Union[Path, str, IO, SeqFile]]) -> Generator[Genome, None, None]:
-    """
-    Helper function, mostly for CLI, for grouping together sequence and annotation files for the same genome.
-    Useful for adding annotations in BED/GFF format to a genome in FASTA/GFA format.
-
-    Note:
-        Whilst this function can accept input streams, everything is coerced into SeqFiles instances and will be
-        written to disk, so this should be taken into consideration before processing many streams.
-
-    Arguments:
-        genomes: An iterable of files as strings or Path objects, SeqFiles or IO streams.
-
-    Yields:
-        Genome instances
-
-    Example:
-        >>> from pathlib import Path
-        >>> for genome in group_genomes(Path('genomes').iterdir()):
-        >>>     print(f'{genome:fasta}', end='')
-
-    """
-    for id_, files in grouper(((SeqFile(i) if not isinstance(i, SeqFile) else i) for i in genomes), 'id'):
-        if len(files := list(files)) > 2:
-            raise GenomeError(f'More than 2 files found for {id_}: {files}')
-        seq_formats, annotation_formats = [], []
-        for file in files:
-            if file.format in {'fasta', 'gfa', 'genbank'}:
-                seq_formats.append(file)
-            elif file.format in {'bed', 'gff'}:
-                annotation_formats.append(file)
-                
-        if (n_seqfiles := len(seq_formats)) != 1:
-            raise GenomeError(f'{n_seqfiles} sequence files found for {id_}: {seq_formats}')
-        
-        if len(seq_formats) == 1 and len(annotation_formats) == 0:
-            yield Genome.from_file(seq_formats[0])
-        
-        if len(seq_formats) == 1 and len(annotation_formats) == 1:
-            yield Genome.from_file(seq_formats[0], annotations=annotation_formats[0])
+# def group_genomes(genomes: Iterable[Union[Path, str, IO, SeqFile]]) -> Generator[Genome, None, None]:
+#     """
+#     Helper function, mostly for CLI, for grouping together sequence and annotation files for the same genome.
+#     Useful for adding annotations in BED/GFF format to a genome in FASTA/GFA format.
+#
+#     Notes:
+#         - Whilst this function can accept input streams, everything is coerced into SeqFiles instances and will be
+#           written to disk, so this should be taken into consideration before processing many streams.
+#
+#     Arguments:
+#         genomes: An iterable of files as strings or Path objects, SeqFiles or IO streams.
+#
+#     Yields:
+#         Genome instances
+#
+#     Examples:
+#         >>> from pathlib import Path
+#         >>> for genome in group_genomes(Path('genomes').iterdir()):
+#         >>>     print(f'{genome:fasta}', end='')
+#
+#     """
+#     for id_, files in grouper(((SeqFile(i) if not isinstance(i, SeqFile) else i) for i in genomes), 'id'):
+#         if len(files := list(files)) > 2:
+#             raise GenomeError(f'More than 2 files found for {id_}: {files}')
+#         seq_formats, annotation_formats = [], []
+#         for file in files:
+#             if file.format in {'fasta', 'gfa', 'genbank'}:
+#                 seq_formats.append(file)
+#             elif file.format in {'bed', 'gff'}:
+#                 annotation_formats.append(file)
+#
+#         if (n_seqfiles := len(seq_formats)) != 1:
+#             raise GenomeError(f'{n_seqfiles} sequence files found for {id_}: {seq_formats}')
+#
+#         if len(seq_formats) == 1 and len(annotation_formats) == 0:
+#             yield Genome.from_file(seq_formats[0])
+#
+#         if len(seq_formats) == 1 and len(annotation_formats) == 1:
+#             yield Genome.from_file(seq_formats[0], annotations=annotation_formats[0])
 
 
 def group_reads(reads: Iterable[Union[Path, str, IO, ReadFile]]) -> Generator[ReadSet, None, None]:
@@ -883,9 +881,9 @@ def group_reads(reads: Iterable[Union[Path, str, IO, ReadFile]]) -> Generator[Re
     Helper function, mostly for CLI, for grouping together read files for the same sample.
     Useful for grouping paired-end or hybrid (long + short) readsets.
 
-    Note:
-        Whilst this function can accept input streams, everything is coerced into ReadFile instances and will be
-        written to disk, so this should be taken into consideration before processing many streams.
+    Notes:
+        - Whilst this function can accept input streams, everything is coerced into ReadFile instances and will be
+          written to disk, so this should be taken into consideration before processing many streams.
 
     Arguments:
         reads: An iterable of files as strings or Path objects, ReadFile or IO streams.
@@ -893,7 +891,7 @@ def group_reads(reads: Iterable[Union[Path, str, IO, ReadFile]]) -> Generator[Re
     Yields:
         ReadSet instances
 
-    Example:
+    Examples:
         >>> from pathlib import Path
         >>> for readset in group_reads(Path('reads').iterdir()):
         >>>     print(f'{readset:fasta}', end='')

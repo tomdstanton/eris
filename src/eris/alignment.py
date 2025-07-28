@@ -1,14 +1,14 @@
 """
 Module for parsing, viewing and managing sequence alignments.
 """
-from typing import Iterable, Generator, Literal
+from typing import Iterable, Generator, Literal, Union
 from operator import attrgetter
-from re import compile
+from re import compile as regex
 
 from eris.seq import HasLocation, Location, Seq, Feature, Qualifier
 
 # Constants ------------------------------------------------------------------------------------------------------------
-_CIGAR_OPERATIONS = compile(r'(?P<n>[0-9]+)(?P<operation>[MIDNSHP=X])')
+_CIGAR_OPERATIONS = regex(r'(?P<n>[0-9]+)(?P<operation>[MIDNSHP=X])')
 _QUERY_CONSUMING_OPERATIONS = {"M", "I", "S", "=", "X"}
 _TARGET_CONSUMING_OPERATIONS = {"M", "D", "N", "=", "X"}
 
@@ -21,44 +21,49 @@ class Alignment(HasLocation):
     """
     Class representing an alignment between a query sequence and target sequence.
 
-    As this class contains a location attribute, it can be used for slicing and extraction of ``Seq``, ``Record`` and
-    ``Feature`` objects.
-
-    :param query: Query sequence name
-    :param query_start: Query start coordinate (0-based)
-    :param query_end: Query end coordinate (0-based)
-    :param target: Target sequence name
-    :param location: ``Location`` of the alignment on the target sequence
-    :param query_length: Query sequence length
-    :param target_length: Target sequence length
-    :param length: Number bases, including gaps, in the alignment
-    :param cigar: CIGAR string
-    :param aligned_seqs: Tuple of aligned sequences
+    Attributes:
+        query: Query sequence name
+        query_length: Query sequence length
+        query_start: Query start coordinate (0-based)
+        query_end: Query end coordinate (0-based)
+        target: Target sequence name
+        target_length: Target sequence length
+        length: Number of residues in the alignment including gaps
+        cigar: CIGAR string
+        score: Alignment score
+        E: Alignment entropy
+        n_matches: Number of matching residues in the alignment
+        quality: Mapping quality (0-255 with 255 for missing)
+        tags: {tag: value} pairs
+        identity: Percentage of matching residues
+        query_coverage: Percentage of query sequence covered by the alignment
+        target_coverage: Percentage of target sequence covered by the alignment
+        aligned_seqs: Tuple of aligned sequences
     """
 
     def __init__(self, query: str, query_start: int, query_end: int, target: str, location: Location,
                  query_length: int = 0, target_length: int = 0, length: int = 0, cigar: str = None,
-                 n_matches: int = 0, quality: int = 0, tags: dict = None, score: float = 0, E: float = 0,
-                 identity: float = 0,  query_coverage: float = 0, target_coverage: float = 0,
+                 n_matches: int = 0, quality: int = 0, tags: dict[str, Union[str, int, float]] = None, score: float = 0,
+                 E: float = 0, identity: float = 0,  query_coverage: float = 0, target_coverage: float = 0,
                  aligned_seqs: tuple[Seq, Seq] = None):
         super().__init__(location)
-        self.query = query  # Query sequence name
-        self.query_length = query_length  # Query sequence length
-        self.query_start = query_start  # Query start coordinate (0-based)
-        self.query_end = query_end  # Query end coordinate (0-based)
-        self.target = target  # Target sequence name
-        self.target_length = target_length  # Target sequence length
-        self.length = length  # Number of residues in the alignment including gaps
-        self.cigar = cigar
-        self.score = score
-        self.E = E
-        self.n_matches = n_matches  # Number of matching residues in the alignment
-        self.quality = quality  # Mapping quality (0-255 with 255 for missing)
-        self.tags = tags or {}  # {tag: value} pairs):
-        self.identity = identity
-        self.query_coverage = query_coverage
-        self.target_coverage = target_coverage
-        self.aligned_seqs = aligned_seqs
+        self.query: str = query  # Query sequence name
+        self.query_length: int = query_length  # Query sequence length
+        self.query_start: int = query_start  # Query start coordinate (0-based)
+        self.query_end: int = query_end  # Query end coordinate (0-based)
+        self.target: str = target  # Target sequence name
+        self.target_length: int = target_length  # Target sequence length
+        self.length: int = length  # Number of residues in the alignment including gaps
+        self.cigar: str = cigar
+        self.score: float = score
+        self.E: float = E
+        self.n_matches: int = n_matches  # Number of matching residues in the alignment
+        self.quality: int = quality  # Mapping quality (0-255 with 255 for missing)
+        self.tags: dict[str, Union[str, int, float]] = tags or {}  # {tag: value} pairs)
+        self.identity: float = identity
+        self.query_coverage: float = query_coverage
+        self.target_coverage: float = target_coverage
+        self.aligned_seqs: tuple[Seq, Seq] = aligned_seqs
 
     def __repr__(self):
         return f'{self.query}:{self.query_start}-{self.query_end} {self.target}:{self.location}'
@@ -70,6 +75,9 @@ class Alignment(HasLocation):
     def from_paf(cls, paf_line: str):
         """
         Parse a line in PAF format and return an Alignment object.
+
+        Parameters:
+            paf_line: A text string representing a single alignment
         """
         if len(paf_line := paf_line.strip().split('\t')) < 12:
             raise AlignmentError(f"PAF Line has < 12 columns: {paf_line}")
@@ -101,13 +109,6 @@ class Alignment(HasLocation):
         except Exception as e:
             raise AlignmentError(f"Error parsing PAF line: {paf_line}: {e}")
 
-    @classmethod
-    def from_sam(cls, sam_line: str):
-        """
-        Parse a line in SAM format and return an Alignment object.
-        """
-        raise NotImplementedError
-        # TODO: Implement this
 
     def iter_cigar(self) -> Generator[tuple[Literal['M', 'I', 'D', 'N', 'S', 'H', 'P', '=', 'X'], int], None, None]:
         """

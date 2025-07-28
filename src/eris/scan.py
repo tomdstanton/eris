@@ -1,21 +1,21 @@
 """
 Module for running the scan pipeline on bacterial genomes.
 """
-from typing import Literal, Union, Generator, IO
+from typing import Literal, Union, Generator, IO, Pattern, Match
 from warnings import warn
 from concurrent.futures import Executor, ThreadPoolExecutor
 from pathlib import Path
 from dataclasses import asdict
 from collections import deque
 from itertools import chain
+from re import compile as regex  # as not to confuse with base compile
 
 from eris import ErisWarning, RESOURCES, require
 from eris.db import Database
-from eris.io import Genome, SeqFile, GeneFinderConfig, group_genomes
-from eris.seq import Record, Feature
+from eris.io import Genome, SeqFile, GeneFinderConfig
+from eris.seq import Feature, Record, Location
 from eris.alignment import cull_all
 from eris.external import Minimap2, Minimap2AlignConfig, Minimap2IndexConfig
-from eris.graph import Edge
 from eris.utils import grouper
 
 
@@ -27,22 +27,12 @@ TSV_HEADER = (
 )
 
 # Classes --------------------------------------------------------------------------------------------------------------
-class InsertionSequence:
-    """
-    Class to store an insertion sequence feature from an alignment and relevant CDS features.
-
-    Attributes:
-        feature: Feature instance representing the IS element
-        CDS_in_element: set[Feature] CDS contained within the element
-        CDS_flanking_element: set[Feature] CDS flanking the element on the same or connected contigs
-        edges: set[Edge] edges in the feature graph connected to the IS element feature
-    """
-    def __init__(self, genome_id: str, feature: Feature, contig: Record):
-        self.genome_id = genome_id
+class FeatureResult:
+    def __init__(self, genome_id: str, feature: Feature, context: str, associated_is: set[str] = None):
+        self.genome_id: str = genome_id
         self.feature: Feature = feature
-        self.CDS_in_element: set[Feature] = set()
-        self.CDS_flanking_element: set[Feature] = set()
-        self.edges: set[Edge] = set()
+        self.context: str = context
+        self.associated_is = associated_is or set()
 
     def __repr__(self):
         return self.feature.__repr__()
@@ -56,37 +46,19 @@ class InsertionSequence:
     def __format__(self, __format_spec: Literal['tsv', 'fna', 'bed', 'faa', 'ffn'] = '') -> str:
         if __format_spec == '':
             return self.__str__()
-        elif __format_spec in {'fna', 'bed'}:
-            return ''.join(
-                format(i, __format_spec) for i in chain([self.feature], self.CDS_in_element, self.CDS_flanking_element))
-        elif __format_spec in {'faa', 'ffn'}:
-            return ''.join(
-                format(i, __format_spec) for i in chain(self.CDS_in_element, self.CDS_flanking_element))
+        elif __format_spec in {'fna', 'faa', 'ffn', 'bed', 'gff'}:
+            return format(self.feature, __format_spec)
         elif __format_spec == 'tsv':
-            results = [
-                f'{self.genome_id}\t{self.feature.id}\tAlignment\t{self.feature:tsv}\t'
-                f'{self.feature.location.partial_start}\t{self.feature.location.partial_end}\t-\t-\t'
-                f'{self.feature['identity']}\t{self.feature['query_coverage']}\t'
-                f'{self.feature['Name']}\t{self.feature['Family']}\t{self.feature['Group']}\t'
-                f'{self.feature['Synonyms']}\t{self.feature['Origin']}\t{self.feature['IR']}\t{self.feature['DR']}\n'
-            ]
-            for feature in self.CDS_in_element:
-                translation = feature.translate()  # Feature should aready have translation Qualifier
-                results.append(
-                    f'{self.genome_id}\t{self.feature.id}\tCDS_in_element\t{feature:tsv}\t'
-                    f'{feature.location.partial_start}\t{feature.location.partial_end}\t'
-                    f'{translation[0]}\t{translation[-1]}\t'
-                    f'-\t-\t{feature['Name']}\t-\t-\t-\t-\t-\t-\n'
-                )
-            for feature in self.CDS_flanking_element:
-                translation = feature.translate()  # Feature should aready have translation Qualifier
-                results.append(
-                    f'{self.genome_id}\t{self.feature.id}\tCDS_flanking_element\t{feature:tsv}\t'
-                    f'{feature.location.partial_start}\t{feature.location.partial_end}\t'
-                    f'{translation[0]}\t{translation[-1]}\t'
-                    f'-\t-\t{feature['Name']}\t-\t-\t-\t-\t-\t-\n'
-                )
-            return ''.join(results)
+            tsv = (f'{self.genome_id}\t{self.feature.id}\t{self.context}\t{self.feature:tsv}\t'
+                   f'{self.feature.location.partial_start}\t{self.feature.location.partial_end}')
+            if self.context == 'Alignment':
+                tsv += (f"\t-\t-\t{self.feature['identity']}\t{self.feature['query_coverage']}\t"
+                        f"{self.feature['Name']}\t{self.feature['Family']}\t{self.feature['Group']}\t"
+                        f"{self.feature['Synonyms']}\t{self.feature['Origin']}\t{self.feature['IR']}\t{self.feature['DR']}\n")
+            else:
+                translation = self.feature.translate()
+                tsv += f"{translation[0]}\t{translation[-1]}\t-\t-\t{self.feature['Name']}\t-\t-\t-\t-\t-\t-\n"
+            return tsv
         else:
             raise NotImplementedError(f'Invalid format: {__format_spec}')
 
@@ -94,24 +66,25 @@ class InsertionSequence:
 class ScannerResult:
     def __init__(self, genome_id: str):
         self.genome_id = genome_id
-        self.insertion_sequences: list[InsertionSequence] = []
+        self.insertion_sequences: dict[str, Feature]
+        self.gene_results = dict[str, FeatureResult]
 
     def __repr__(self):
         return f'ScannerResult({self.genome_id})'
 
-    def __iter__(self):
-        return iter(self.insertion_sequences)
-
-    def __len__(self):
-        return len(self.insertion_sequences)
-
-    def __format__(self, __format_spec: Literal['tsv', 'fna', 'bed', 'faa', 'ffn'] = '') -> str:
-        if __format_spec == '':
-            return self.__str__()
-        elif __format_spec in {'tsv', 'fna', 'bed', 'faa', 'ffn'}:
-            return ''.join(format(i, __format_spec) for i in self.insertion_sequences)
-        else:
-            raise NotImplementedError(f'Invalid format: {__format_spec}')
+    # def __iter__(self):
+    #     return iter(self.insertion_sequences)
+    #
+    # def __len__(self):
+    #     return len(self.insertion_sequences)
+    #
+    # def __format__(self, __format_spec: Literal['tsv', 'fna', 'bed', 'faa', 'ffn'] = '') -> str:
+    #     if __format_spec == '':
+    #         return self.__str__()
+    #     elif __format_spec in {'tsv', 'fna', 'bed', 'faa', 'ffn'}:
+    #         return ''.join(format(i, __format_spec) for i in self.insertion_sequences)
+    #     else:
+    #         raise NotImplementedError(f'Invalid format: {__format_spec}')
 
 
 class ScannerWarning(ErisWarning):
@@ -120,6 +93,55 @@ class ScannerWarning(ErisWarning):
 
 class ScannerError(Exception):
     pass
+
+
+class PromoterScanner:
+    """
+    Class to scan for promoter regions in a sequence.
+
+    :param pool: A ThreadPoolExecutor or ProcessPoolExecutor instance if needed
+    :param add_features: Boolean to add the found promoters as features to the record
+    """
+    def __init__(self, pool: Executor = None, add_features: bool = False):
+        self.regex: Pattern = regex(r"(?P<minus_35>TT[GCA][ATGC]{2}[A]).{15,21}(?P<minus_10>TA[ATGC]{2}A[AT])")
+        self.pool: Executor = pool
+        self._map_func = self.pool.map if self.pool else map
+        self.add_features: bool = add_features
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.pool:
+            self.pool.shutdown(wait=False, cancel_futures=True)
+
+    def __del__(self):
+        if self.pool:
+            self.pool.shutdown(wait=False, cancel_futures=True)
+
+    def _scan_record(self, record: Record) -> Generator[Feature, None, None]:
+        """
+        Scans a single record on both strands and yields 'promoter' features
+        """
+        promoters, record_len = [], len(record)
+        for reverse, seq_str in zip((False, True), (str(record.seq), str(record.seq.reverse_complement()))):
+            for match in self.regex.finditer(seq_str):  # FIX: Use the correct sequence string
+                location = Location(match.start(), match.end(), 1, parent_id=record.id)
+                if reverse:
+                    location = location.reverse_complement(record_len)
+                promoter = Feature(location, kind='promoter')
+                if self.add_features:
+                    promoters.append(promoter)
+                yield promoter
+
+        if self.add_features and promoters:
+            record.add_features(*promoters)
+
+    def scan(self, *records: Record) -> Generator[Feature, None, None]:
+        """
+        Scans for promoter regions in Records
+        """
+        yield from chain.from_iterable(self._map_func(self._scan_record, records))
 
 
 class Scanner:
@@ -188,7 +210,7 @@ class Scanner:
         Yields:
             ScannerResult instances for each genome processed or None
         """
-        yield from map(self._pipeline, group_genomes(genomes))
+        yield from map(self._pipeline, genomes)
 
     def _pipeline(self, genome: Union[str, Path, IO, SeqFile, Genome]) -> Union[ScannerResult, None]:
         if not isinstance(genome, Genome):
@@ -219,7 +241,7 @@ class Scanner:
             for feature in (contig := genome[contig]):  # type: Feature
                 if feature.kind == 'mobile_element':  # This is an IS element, let's see if it overlaps any ORFs
                     feature.qualifiers += self.db[feature['name']].qualifiers  # Pull over the qualifiers from the database
-                    result.insertion_sequences.append(is_element := InsertionSequence(genome.id, feature, contig))
+                    result.insertion_sequences[feature.id] = (is_element := FeatureResult(genome.id, feature, 'Alignment'))
                     # This block performs a graph traversal (BFS) starting from the neighbors of the IS element
                     # to find all genes that are part of the IS element vs. those that are merely flanked by it.
 
@@ -232,7 +254,6 @@ class Scanner:
 
                     while edges_to_visit:
                         edge = edges_to_visit.popleft()
-                        is_element.edges.add(edge)  # Use .add() for the new set
                         if not (gene := genes.get(edge.to)):
                             continue
 
@@ -247,6 +268,7 @@ class Scanner:
                                 feature.overlap(gene) / len(gene) >= 0.8):
                             # This gene is part of the IS. Add it to the 'overlaps' set.
                             is_element.CDS_in_element.add(gene)  # Use .add()
+                            gene.translate(parent=genome[gene.location.parent_id])
                             # Since it's part of the IS, we need to explore its neighbors as well
                             # to find the full extent of the element.
                             for next_edge in graph.get_neighbors(gene.id):
@@ -258,9 +280,12 @@ class Scanner:
                             # sufficiently), so it's a flanking gene.
                             is_element.CDS_flanking_element.add(gene)  # Use .add()
                             # We stop the traversal down this path by not adding its neighbors to the queue.
+                            gene.translate(parent=genome[gene.location.parent_id])
         return result
 
+
 def main():
-    with Scanner() as scanner:
-        genome = Genome.from_file('tests/ERR4920392.gfa', 'tests/ERR4920392.gff3')
-        results = scanner(genome)
+    genome = Genome.from_file('tests/ERR4920392.gfa', 'tests/ERR4920392.bed')
+    with ThreadPoolExecutor() as pool:
+        with PromoterScanner(pool, add_features=True) as promoter_scanner:
+            promoters = list(promoter_scanner.scan(*genome))
