@@ -117,9 +117,11 @@ of Features on the respective contig.
 1. The genome is then converted into a **Feature graph**, whereby Features on each contig, sorted by their respective
 start coordinates, are connected to their flanking Features; and if the contig is connected to other contigs 
 (GFA input), Features on the termini of connected contigs are also connected to each other.
+1. Promoters are searched for in each Element Feature using a regular expression. 
 1. For each Element Feature, the **[Breadth-first search](https://en.wikipedia.org/wiki/Breadth-first_search) (BFS)**
 algorithm traverses the **Feature graph** to find CDS that either **overlap** (part of the element) or **flank**
 the element.
+1. The relative effect of the Element on each flanking CDS Feature is predicted.
 
 #### Performance 
 `eris scan` is very fast, especially when providing annotations or once the 
