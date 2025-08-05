@@ -1,0 +1,1418 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Uncovering IS-mediated discord in bacterial genomes.">
+      
+      
+      
+        <link rel="canonical" href="https://tomdstanton.github.io/eris/">
+      
+      
+      
+        <link rel="next" href="reference/eris/">
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+    
+    
+      
+        <title>eris 🧬🧞‍♀🔮️</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.7e37652d.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#eris" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="eris 🧬🧞‍♀🔮️" class="md-header__button md-logo" aria-label="eris 🧬🧞‍♀🔮️" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 2h2v2c0 1.44.68 2.61 1.88 3.78.86.83 2.01 1.63 3.21 2.42l-1.83 1.19C8.27 10.72 7.31 10 6.5 9.21 5.07 7.82 4 6.1 4 4zm14 0h2v2c0 2.1-1.07 3.82-2.5 5.21-1.41 1.38-3.21 2.52-4.96 3.63-1.75 1.12-3.45 2.21-4.66 3.38C6.68 17.39 6 18.56 6 20v2H4v-2c0-2.1 1.07-3.82 2.5-5.21 1.41-1.38 3.21-2.52 4.96-3.63 1.75-1.12 3.45-2.21 4.66-3.38C17.32 6.61 18 5.44 18 4zm-3.26 10.61c.99.67 1.95 1.39 2.76 2.18C18.93 16.18 20 17.9 20 20v2h-2v-2c0-1.44-.68-2.61-1.88-3.78-.86-.83-2.01-1.63-3.21-2.42zM7 3h10v1l-.06.5H7.06L7 4zm.68 3h8.64c-.24.34-.52.69-.9 1.06l-.51.44H9.07l-.49-.44c-.38-.37-.66-.72-.9-1.06m1.41 10.5h5.84l.49.44c.38.37.66.72.9 1.06H7.68c.24-.34.52-.69.9-1.06zm-2.03 3h9.88l.06.5v1H7v-1z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            eris 🧬🧞‍♀🔮️
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Home
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/tomdstanton/eris" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    tomdstanton/eris
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="eris 🧬🧞‍♀🔮️" class="md-nav__button md-logo" aria-label="eris 🧬🧞‍♀🔮️" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 2h2v2c0 1.44.68 2.61 1.88 3.78.86.83 2.01 1.63 3.21 2.42l-1.83 1.19C8.27 10.72 7.31 10 6.5 9.21 5.07 7.82 4 6.1 4 4zm14 0h2v2c0 2.1-1.07 3.82-2.5 5.21-1.41 1.38-3.21 2.52-4.96 3.63-1.75 1.12-3.45 2.21-4.66 3.38C6.68 17.39 6 18.56 6 20v2H4v-2c0-2.1 1.07-3.82 2.5-5.21 1.41-1.38 3.21-2.52 4.96-3.63 1.75-1.12 3.45-2.21 4.66-3.38C17.32 6.61 18 5.44 18 4zm-3.26 10.61c.99.67 1.95 1.39 2.76 2.18C18.93 16.18 20 17.9 20 20v2h-2v-2c0-1.44-.68-2.61-1.88-3.78-.86-.83-2.01-1.63-3.21-2.42zM7 3h10v1l-.06.5H7.06L7 4zm.68 3h8.64c-.24.34-.52.69-.9 1.06l-.51.44H9.07l-.49-.44c-.38-.37-.66-.72-.9-1.06m1.41 10.5h5.84l.49.44c.38.37.66.72.9 1.06H7.68c.24-.34.52-.69.9-1.06zm-2.03 3h9.88l.06.5v1H7v-1z"/></svg>
+
+    </a>
+    eris 🧬🧞‍♀🔮️
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/tomdstanton/eris" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    tomdstanton/eris
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction 🌐
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation ⚙️
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation ⚙️">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#requires" class="md-nav__link">
+    <span class="md-ellipsis">
+      Requires 🧰
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      From source:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Usage 🧑‍💻
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage 🧑‍💻">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scan" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scan 🔍
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scan 🔍">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quickstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quickstart
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Arguments
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      The algorithm
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Outputs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Outputs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tsv-tabular-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      TSV tabular output
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example output
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pan" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pan 🦘
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#map" class="md-nav__link">
+    <span class="md-ellipsis">
+      Map 🗺️
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>eris
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>eris
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    eris
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>alignment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/alphabet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>alphabet
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>cli
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/db/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>db
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/external/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>external
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/graph/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>graph
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>io
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/mapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>mapper
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/pan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>pan
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/scan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>scan
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/seq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>seq
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/eris/utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>utils
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction 🌐
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation ⚙️
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation ⚙️">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#requires" class="md-nav__link">
+    <span class="md-ellipsis">
+      Requires 🧰
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      From source:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Usage 🧑‍💻
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage 🧑‍💻">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scan" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scan 🔍
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scan 🔍">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quickstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quickstart
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Arguments
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      The algorithm
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Outputs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Outputs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tsv-tabular-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      TSV tabular output
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example output
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pan" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pan 🦘
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#map" class="md-nav__link">
+    <span class="md-ellipsis">
+      Map 🗺️
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/tomdstanton/eris/edit/master/docs/index.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="eris"><code>eris</code> 🧬🧞‍♀🔮️</h1>
+<p>Uncovering IS-mediated discord in bacterial genomes</p>
+<p><a href="https://choosealicense.com/licenses/gpl-3.0/"><img alt="License" src="https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&amp;maxAge=2678400" /></a>
+<a href="https://pypi.org/project/eris"><img alt="PyPI" src="https://img.shields.io/pypi/v/eris.svg?style=flat-square&amp;maxAge=3600&amp;logo=PyPI" /></a>
+<a href="https://anaconda.org/bioconda/eris"><img alt="Bioconda" src="https://img.shields.io/conda/vn/bioconda/eris?style=flat-square&amp;maxAge=3600&amp;logo=anaconda" /></a>
+<a href="https://pypi.org/project/eris/#files"><img alt="Wheel" src="https://img.shields.io/pypi/wheel/eris.svg?style=flat-square&amp;maxAge=3600" /></a>
+<a href="https://pypi.org/project/eris/#files"><img alt="Python Versions" src="https://img.shields.io/pypi/pyversions/eris.svg?style=flat-square&amp;maxAge=600&amp;logo=python" /></a>
+<a href="https://pypi.org/project/eris/#files"><img alt="Python Implementations" src="https://img.shields.io/pypi/implementation/eris.svg?style=flat-square&amp;maxAge=600&amp;label=impl" /></a>
+<a href="https://github.com/tomdstanton/eris/"><img alt="Source" src="https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=2678400&amp;style=flat-square" /></a>
+<a href="https://github.com/tomdstanton/eris/issues"><img alt="Issues" src="https://img.shields.io/github/issues/tomdstanton/eris.svg?style=flat-square&amp;maxAge=600" /></a>
+<a href="https://eris.readthedocs.io"><img alt="Docs" src="https://img.shields.io/readthedocs/eris/latest?style=flat-square&amp;maxAge=600" /></a>
+<a href="https://github.com/tomdstanton/eris/blob/main/CHANGELOG.md"><img alt="Changelog" src="https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&amp;style=flat-square" /></a>
+<a href="https://pepy.tech/project/eris"><img alt="Downloads" src="https://img.shields.io/pypi/dm/eris?style=flat-square&amp;color=303f9f&amp;maxAge=86400&amp;label=downloads" /></a></p>
+<h2 id="introduction">Introduction 🌐</h2>
+<p><code>eris</code> is a Python package for finding IS elements in bacterial genomes and quantifying their effect on other genes.
+IS elements are known to move, disrupt and even promote genes and whilst there are many tools to find IS elements in
+genomes, few attempt to report the resulting effects. </p>
+<p>Like many bioinformatics tools <code>eris</code> is designed to work from 
+the command-line, but is built on top of a robust API with few dependencies, and can be easily installed and
+incorporated into other programs, scripts and pipelines.</p>
+<h2 id="installation">Installation ⚙️</h2>
+<h3 id="requires">Requires 🧰</h3>
+<pre><code>python &gt;=3.9
+minimap2 &gt;=2.18
+pyrodigal &gt;=3.5.0 (for ORF prediction only)
+</code></pre>
+<p><strong>NOTE: eris is not yet on PyPI or Bioconda, please install from source until it is released</strong></p>
+<h3 id="from-source">From source:</h3>
+<pre><code class="language-shell"># First clone the repo
+git clone https://github.com/tomdstanton/eris.git &amp;&amp; cd eris
+# Then install with pip
+pip install .  # -e for editable, developers only!
+# or install with pixi
+pixi install
+</code></pre>
+<p><strong>NOTE: For <a href="https://pyrodigal.readthedocs.io/en/stable/">Pyrodigal</a>, you should install the <code>orf</code> or <code>dev</code>
+environments with <code>pip</code> or <a href="https://pixi.sh/dev/"><code>pixi</code></a></strong></p>
+<pre><code class="language-shell"># First clone the repo
+git clone https://github.com/tomdstanton/eris.git &amp;&amp; cd eris
+# Then install with pip
+pip install .[orf]  # -e for editable, developers only!
+# or install with pixi
+pixi install -e orf
+</code></pre>
+<h2 id="usage">Usage 🧑‍💻</h2>
+<p>The information below explains how to use the <code>eris</code> CLI. 
+For API usage, please refer to the <a href="https://tomdstanton.github.io/eris/reference/eris/">reference documentation</a>.</p>
+<h3 id="scan">Scan 🔍</h3>
+<h4 id="quickstart">Quickstart</h4>
+<p><code>eris scan *.{fasta,gfa,gb} &gt; results.tsv</code></p>
+<h4 id="arguments">Arguments</h4>
+<pre><code class="language-shell">usage: eris scan &lt;genome&gt; &lt;genome...&gt; [options]
+
+========================|&gt; eris |&gt;========================
+             Scan for IS in bacterial genomes             
+
+Inputs:
+
+  Note, input file(s) may be compressed
+  Note, Genome(s) in FASTA/GFA format can paired up with GFA/BED
+  annotation files with the same prefix.
+
+  &lt;genome&gt;              Genome(s) in FASTA, GFA or Genbank format;
+                        reads from stdin by default.
+  -a [ ...], --annotations [ ...]
+                        Optional genome annotations in GFF3/BED format;
+                        These will be matched up to input genomes (FASTA/GFA) 
+                        with corresponding filenames
+
+Outputs:
+
+  Note, text outputs accept &quot;-&quot; or &quot;stdout&quot; for stdout
+  If a directory is passed, individual files will be written per input genome
+
+  --tsv []              Path to output tabular results (default: stdout)
+  --ffn []              Path to output Feature DNA sequences in FASTA format;
+                        defaults to &quot;./[genome]_eris_results.ffn&quot; when passed without arguments.
+  --faa []              Path to output Feature Amino acid sequences in FASTA format;
+                        defaults to &quot;./[genome]_eris_results.faa&quot; when passed without arguments.
+  --no-tsv-header       Suppress header in TSV output
+
+Other options:
+
+  --progress            Show progress bar
+  -v, --version         Show version number and exit
+  -h, --help            Show this help message and exit
+
+For more help, visit: eris.readthedocs.io
+</code></pre>
+<h4 id="the-algorithm">The algorithm</h4>
+<ol>
+<li>Given a bacterial genome as an assembly (FASTA), assembly-graph (GFA) or annotation file (Genbank), the <code>scan</code> pipeline
+will align IS element nucleotide sequences from the <a href="https://isfinder.biotoul.fr/">ISFinder</a> database against the 
+assembly contigs using <a href="https://lh3.github.io/minimap2/">minimap2</a>.</li>
+<li>These alignments are then sorted by their target contig, and culled such that each region aligned contains the highest 
+scoring query.</li>
+<li>Each Element alignment is then considered to be a "mobile-element" Feature, and added to the list
+of Features on the respective contig.</li>
+<li>If the genome is from a sequence file (FASTA/GFA), ORFs are predicted with 
+<a href="https://pyrodigal.readthedocs.io/en/stable">Pyrodigal</a> and CDS Features are added to each contig.</li>
+<li>The genome is then converted into a <strong>Feature graph</strong>, whereby Features on each contig, sorted by their respective
+start coordinates, are connected to their flanking Features; and if the contig is connected to other contigs 
+(GFA input), Features on the termini of connected contigs are also connected to each other.</li>
+<li>Promoters are searched for in each Element Feature using a regular expression. </li>
+<li>For each Element Feature, the <strong><a href="https://en.wikipedia.org/wiki/Breadth-first_search">Breadth-first search</a> (BFS)</strong>
+algorithm traverses the <strong>Feature graph</strong> to find CDS that either <strong>overlap</strong> (part of the element) or <strong>flank</strong>
+the element.</li>
+<li>The relative effect of the Element on each flanking CDS Feature is predicted.</li>
+</ol>
+<h4 id="performance">Performance</h4>
+<p><code>eris scan</code> is very fast, especially when providing annotations or once the 
+<a href="https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#genefinder"><code>pyrodigal.GeneFinder</code></a> instance has been
+trained (this occurs on the first input genome); it should only take &lt;1 second per assembly 🚀</p>
+<h3 id="outputs">Outputs</h3>
+<p>The main output of <code>eris scan</code> is the TSV tabular result which are written to <code>stdout</code> by default. Sequence information
+can be written to separate files via the respective CLI flags.</p>
+<h4 id="tsv-tabular-output">TSV tabular output</h4>
+<p>The TSV tabular output reports one line per <strong>Feature</strong> of interest, which can either be the Element itself from the
+resulting alignments, the CDS <em>inside</em> the Element, or the CDS <em>flanking</em> the Element. If the context is the
+Element, information about the element from <a href="https://isfinder.biotoul.fr/">ISFinder</a> will be reported. If the context is a CDS, information about
+the ORF/translation will be reported.</p>
+<p>The TSV columns are as follows:</p>
+<ol>
+<li><strong>Genome</strong>: The name of the input genome.</li>
+<li><strong>Feature</strong>: The unique identifier of the Feature in question.</li>
+<li><strong>Type</strong>: The <a href="https://www.insdc.org/submitting-standards/feature-table/">Feature type</a>, currently only CDS are 
+supported if annotations are provided; Elements are annotated as "<code>mobile_element</code>" and promoters are annotated as
+"<code>regulatory</code>".</li>
+<li><strong>Contig</strong>: The name of the contig the Element is on.</li>
+<li><strong>Start</strong>: The start coordinate (0-based) of the Feature.</li>
+<li><strong>End</strong>: The end coordinate of the Feature.</li>
+<li><strong>Strand</strong>: The strand of the Feature (1 or -1).</li>
+<li><strong>Partial</strong>: Whether the Feature overlaps with the start or end the contig.</li>
+<li><strong>Element</strong>: The unique identifier of the Element from the current context.</li>
+<li><strong>Element_distance</strong>: Signifies the distance of the Feature from the Element from the current context.</li>
+<li><strong>Element_location</strong>: Signifies the relative location of the Element from the current context.</li>
+<li><strong>Element_strand</strong>: Signifies the relative strand of the Element from the current context.</li>
+<li><strong>Element_effect</strong>: Signifies the relative effect of the Element from the current context on the CDS.</li>
+<li><strong>Percent_identity</strong>: The percent identity of the Element.</li>
+<li><strong>Percent_coverage</strong>: The percent coverage of the Element.</li>
+<li><strong>Name</strong>: The name of the Element if known (from ISFinder).</li>
+<li><strong>Family</strong>: The family of the Element if known (from ISFinder).</li>
+<li><strong>Group</strong>: The group of the Element if known (from ISFinder).</li>
+<li><strong>Synonyms</strong>: The synonyms of the Element if known (from ISFinder).</li>
+<li><strong>Origin</strong>: The origin of the Element if known (from ISFinder).</li>
+<li><strong>IR</strong>: The relative location of the inverted repeat of the Element if known (from ISFinder).</li>
+<li><strong>DR</strong>: The relative location of the direct repeat of the Element if known (from ISFinder).</li>
+</ol>
+<h4 id="example-output">Example output</h4>
+<p>This is a single Element context in TSV format from a <em>K. pneumoniae</em> genome, supplied from a GFA and BED file.
+You can see that the Element (<code>0db94675-30ef-4b28-a212-f26cbad7409e</code>) contains one CDS, one promoter and is of the
+IS1380 family. On the same strand downstream is one CDS, annotated as a CTX-M-15 gene, known to confer ESBL resistance.
+As the Element contains a promoter and is on the same strand downstream, and in close proximity (48bp),
+we predict this gene is being upregulated.</p>
+<table>
+<thead>
+<tr>
+<th>Genome</th>
+<th>Feature</th>
+<th>Type</th>
+<th>Contig</th>
+<th>Start</th>
+<th>End</th>
+<th>Strand</th>
+<th>Partial</th>
+<th>Element</th>
+<th>Element_distance</th>
+<th>Element_location</th>
+<th>Element_strand</th>
+<th>Element_effect</th>
+<th>Percent_identity</th>
+<th>Percent_coverage</th>
+<th>Name</th>
+<th>Family</th>
+<th>Group</th>
+<th>Synonyms</th>
+<th>Origin</th>
+<th>IR</th>
+<th>DR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ERR4920392</td>
+<td>KNDCPA_05188</td>
+<td>CDS</td>
+<td>65</td>
+<td>834</td>
+<td>1710</td>
+<td>-1</td>
+<td>FALSE</td>
+<td>0db94675-30ef-4b28-a212-f26cbad7409e</td>
+<td>48bp</td>
+<td>downstream</td>
+<td>same strand</td>
+<td>upregulated</td>
+<td>-</td>
+<td>-</td>
+<td>extended-spectrum class A beta-lactamase CTX-M-15</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>ERR4920392</td>
+<td>0db94675-30ef-4b28-a212-f26cbad7409e</td>
+<td>mobile_element</td>
+<td>65</td>
+<td>1758</td>
+<td>2157</td>
+<td>-1</td>
+<td>TRUE</td>
+<td>0db94675-30ef-4b28-a212-f26cbad7409e</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>100</td>
+<td>24.0942029</td>
+<td>ISEc9</td>
+<td>IS1380</td>
+<td></td>
+<td>None</td>
+<td>Escherichia coli</td>
+<td>13/22</td>
+<td>NA</td>
+</tr>
+<tr>
+<td>ERR4920392</td>
+<td>KNDCPA_05189</td>
+<td>CDS</td>
+<td>65</td>
+<td>1862</td>
+<td>1985</td>
+<td>-1</td>
+<td>FALSE</td>
+<td>0db94675-30ef-4b28-a212-f26cbad7409e</td>
+<td>-</td>
+<td>inside</td>
+<td>same strand</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>MobQ family relaxase</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>ERR4920392</td>
+<td>0db94675-30ef-4b28-a212-f26cbad7409e_promoter_1</td>
+<td>regulatory</td>
+<td>65</td>
+<td>2053</td>
+<td>2083</td>
+<td>-1</td>
+<td>FALSE</td>
+<td>0db94675-30ef-4b28-a212-f26cbad7409e</td>
+<td>-</td>
+<td>inside</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pan">Pan 🦘</h3>
+<p><code>eris pan</code> quantifies the effect of IS-mediated events in pan-genome graphs.</p>
+<p>Coming soon!</p>
+<h3 id="map">Map 🗺️</h3>
+<p>Re-implementation of <a href="https://github.com/jhawkey/IS_mapper">ISMapper</a>, with reference-based and reference-free options.</p>
+<p>Coming soon!</p>
+<p><img alt="eris" src="https://static.wikia.nocookie.net/dreamworks/images/6/6f/Sinbad-disneyscreencaps.com-1100.jpg/revision/latest?cb=20240311205845" /></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": ".", "features": ["toc.follow", "content.action.edit"], "search": "assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.50899def.min.js"></script>
+      
+    
+  </body>
+</html>
