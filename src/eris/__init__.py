@@ -28,6 +28,7 @@ class Resources:
         self._metadata: 'PackageMetadata' = None  # Generated on demand
         self._available_cpus: int = None  # Generated on demand
         self._rng: 'Random' = None  # Generated on demand
+        self._pool: 'Executor' = None  # Generated on demand
 
     @property
     def data(self) -> 'Traversable':
@@ -54,7 +55,7 @@ class Resources:
         return self._rng
 
     @property
-    def available_cpus(self):
+    def available_cpus(self) -> int:
         """Number of available CPUs"""
         if self._available_cpus is None:
             try:
@@ -63,6 +64,14 @@ class Resources:
                 from os import cpu_count
             self._available_cpus = cpu_count()
         return self._available_cpus
+
+    @property
+    def pool(self) -> 'Executor':
+        """A concurrent.futures.Executor instance"""
+        if self._pool is None:
+            from concurrent.futures import ThreadPoolExecutor
+            self._pool = ThreadPoolExecutor(min(32, self.available_cpus + 4))
+        return self._pool
 
     @staticmethod
     def _check_module(module_name: str) -> bool:
@@ -79,6 +88,18 @@ class Resources:
             return True
         except ImportError:
             return False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._pool is not None:
+            self._pool.shutdown(wait=False, cancel_futures=True)
+
+    def __del__(self):
+        if self._pool is not None:
+            self._pool.shutdown(wait=False, cancel_futures=True)
+
 
 
 class ErisWarning(Warning):

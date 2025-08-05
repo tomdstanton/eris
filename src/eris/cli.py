@@ -9,7 +9,6 @@ from io import IOBase
 from sys import stdout, stderr, stdin
 from pathlib import Path
 import time
-# from threading import Lock
 from concurrent.futures import Executor, ThreadPoolExecutor
 
 from eris import RESOURCES
@@ -17,7 +16,7 @@ from eris.io import SeqFile, Genome
 from eris.utils import bold, get_logo, write_to_file_or_directory
 
 # Constants ------------------------------------------------------------------------------------------------------------
-_EPILOG = 'For more help, visit: ' + bold(f'{RESOURCES.package}.readthedocs.io')
+_EPILOG = f'For more help, visit: {bold(f'{RESOURCES.package}.readthedocs.io')}'
 _SUFFIX = f'_{RESOURCES.package}_results'
 
 
@@ -54,10 +53,6 @@ class ResultWriter:
 
         if not self._files and not self._handles:
             raise ValueError("No outputs specified")
-
-        # self.pool: Executor = pool or ThreadPoolExecutor(
-        #     min(len(self._files) + len(self._handles), RESOURCES.available_cpus + 4)
-        # )
 
     def __len__(self):
         return len(self._files) + len(self._handles)
@@ -127,9 +122,10 @@ class ProgressBar:
         desc (str): A description to display before the progress bar.
         bar_length (int): The character length of the progress bar.
         bar_character (str): The character used to fill the progress bar.
+        silence (bool): Silence the bar
     """
-    def __init__(self, iterable: Iterable, callable: Callable[[Any], Any],
-                 desc: str = "Processing items", bar_length: int = 40, bar_character: str = '█'):
+    def __init__(self, iterable: Iterable, callable: Callable[[Any], Any], desc: str = "Processing items",
+                 bar_length: int = 40, bar_character: str = '█', silence: bool = False):
         # Eagerly consume the iterable to get a total count for the progress bar.
         assert len(bar_character) == 1, "Bar character must be a single character"
         self.items = list(iterable)
@@ -138,6 +134,7 @@ class ProgressBar:
         self.desc = desc
         self.bar_length = bar_length
         self.bar_character = bar_character
+        self.silence = silence
         self._iterator: Iterable = None
         self.start_time: float = None
         self._processed_count: int = 0
@@ -154,7 +151,8 @@ class ProgressBar:
         self._iterator = iter(self.items)
         self.start_time = time.time()
         self._processed_count = 0
-        self._update_progress()  # Display the initial (0%) bar
+        if not self.silence:
+            self._update_progress()  # Display the initial (0%) bar
         return self
 
     def __next__(self):
@@ -164,7 +162,8 @@ class ProgressBar:
         # The core of the wrapper: call the provided callable for one item.
         result = self.callable(item)
         self._processed_count += 1
-        self._update_progress()
+        if not self.silence:
+            self._update_progress()
         return result
 
     def _update_progress(self):
@@ -225,7 +224,7 @@ def scan_parser(subparsers):
     inputs.add_argument(
         '-a', '--annotations', nargs='*', metavar='', type=Path,
         help='Optional genome annotations in GFF3/BED format;\n'
-             'These will be matched up to input genomes (FASTA/GFA) with corresponding filenames'
+             'These will be matched up to input genomes (FASTA/GFA)\nwith corresponding filenames'
     )
     outputs = parser.add_argument_group(
         bold('Outputs'),
@@ -237,17 +236,18 @@ def scan_parser(subparsers):
         type=write_to_file_or_directory
     )
     outputs.add_argument(  # FFN output can be written to a single file or one file per genome
-        '--ffn', metavar='', help=f'Path to output feature DNA sequences in FASTA format;\n'
+        '--ffn', metavar='', help=f'Path to output Feature DNA sequences in FASTA format;\n'
                                   f'defaults to "./[genome]{_SUFFIX}.ffn" when passed without arguments.',
         const='.', nargs='?', type=write_to_file_or_directory, default=None
     )
     outputs.add_argument(  # FAA output can be written to a single file or one file per genome
-        '--faa', metavar='', help=f'Path to output feature Amino acid sequences in FASTA format;\n'
+        '--faa', metavar='', help=f'Path to output Feature Amino acid sequences in FASTA format;\n'
                                   f'defaults to "./[genome]{_SUFFIX}.faa" when passed without arguments.',
         const='.', nargs='?', type=write_to_file_or_directory, default=None
     )
     outputs.add_argument('--no-tsv-header', action='store_true', help='Suppress header in TSV output')
     opts = parser.add_argument_group(bold('Other options'), '')
+    opts.add_argument('--progress', help='Show progress bar', action='store_true')
     opts.add_argument('-v', '--version', help='Show version number and exit', action='version')
     opts.add_argument('-h', '--help', help='Show this help message and exit', action='help')
 
@@ -276,17 +276,19 @@ def main():
         with Scanner() as scanner:
             annotations = {p.stem: p for p in args.annotations} if args.annotations else {}
 
-            # Define a helper function to be the ProgressBar's callable.
             def _process_genome(genome_input: Union[str, Path, IO]) -> Union[ScannerResult, None]:
+                """A helper function to be the ProgressBar's callable."""
                 if isinstance(genome_input, IOBase) or genome_input in {'-', 'stdin'}:
                     return scanner(Genome.from_file(genome_input))
                 else:
                     genome_input = Path(genome_input) if isinstance(genome_input, str) else genome_input
-                    return scanner(Genome.from_file(genome_input, annotations=annotations.get(genome_input.stem)))
+                    return scanner(
+                        Genome.from_file(genome_input, annotations=annotations.get(genome_input.stem)))
 
             with ResultWriter(
                     ('tsv', args.tsv), ('faa', args.faa), ('ffn', args.ffn),
                     tsv_header=TSV_HEADER, no_tsv_header=args.no_tsv_header
                 ) as writer:
-                for result in ProgressBar(args.genome, _process_genome, "Scanning genomes"):
-                    writer.write(result)
+                    for result in ProgressBar(args.genome, _process_genome, "Scanning genomes",
+                                              silence=not args.progress):
+                        writer.write(result)

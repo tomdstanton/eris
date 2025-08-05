@@ -6,7 +6,6 @@ from warnings import warn
 from re import compile as regex
 from pathlib import Path
 from typing import Union, Generator, IO, Literal, Iterable, TextIO, get_args, Callable
-from concurrent.futures import Executor, ThreadPoolExecutor
 from itertools import chain
 from io import BufferedIOBase, RawIOBase
 from shutil import copyfileobj
@@ -21,6 +20,7 @@ from eris.alphabet import DNA
 from eris.seq import Record, Feature, Seq, Qualifier, Location
 from eris.graph import Graph, Edge
 from eris.utils import xopen, Config, grouper
+from eris.alignment import parse_cigar
 
 # Constants ------------------------------------------------------------------------------------------------------------
 _SUPPORTED_FORMATS = Literal['fasta', 'gfa', 'genbank', 'fastq', 'gff', 'bed']
@@ -62,11 +62,6 @@ class ParserWarning(ErisWarning):
 
 class ParserError(Exception):
     pass
-
-
-class Parser:
-    def __init__(self):
-        pass
 
 
 class SeqFileWarning(ErisWarning):
@@ -396,7 +391,7 @@ class Genome:
 
     @classmethod
     def random(
-            cls, id_: str = None, genome: Record = None, rng: Random = RESOURCES.rng, n_contigs: int = None,
+            cls, id_: str = None, genome: Record = None, rng: Random = None, n_contigs: int = None,
             min_contigs: int = 1, max_contigs: int = 1000, gc: float = 0.5, length: int = None, min_len: int = 10,
             max_len: int = 5000000
     ):
@@ -415,9 +410,10 @@ class Genome:
         :param max_len: Maximum length of the genome if length is not specified.
         :return: A Genome instance representing the random assembly.
         """
-        n_contigs = n_contigs or rng.randint(min_contigs, max_contigs)
-        genome = genome or Record.random(None, DNA, rng, gc, length, min_len, max_len)
-        return cls(id_ or str(uuid4()), {i.id: i for i in genome.shred(rng, n_contigs)})
+        if rng is None:
+            rng = RESOURCES.rng
+        return cls(id_ or str(uuid4()), {i.id: i for i in (genome or Record.random(
+            None, DNA, rng, gc, length, min_len, max_len)).shred(rng, n_contigs or rng.randint(min_contigs, max_contigs))})
 
     def as_assembly_graph(self, directed: bool = False) -> Graph:
         """
@@ -473,7 +469,7 @@ class Genome:
         return feature_graph
 
     @require('pyrodigal')
-    def find_genes(self, gene_finder: 'pyrodigal.GeneFinder' = None, pool: Executor = None,
+    def find_genes(self, gene_finder: 'pyrodigal.GeneFinder' = None, pool: 'Executor' = None,
                    config: GeneFinderConfig = None) -> Generator[Feature, None, None]:
         """
         Predicts ORFs in the Genome using Pyrodigal.
@@ -499,14 +495,17 @@ class Genome:
             from pyrodigal import GeneFinder
             gene_finder = GeneFinder(**asdict(config or GeneFinderConfig()))
 
-        if pool is None:
-            pool = ThreadPoolExecutor(max_workers=min(32, RESOURCES.available_cpus + 4))
-
         if gene_finder.training_info is None:
             gene_finder.train(*(bytes(contig.seq) for contig in self.contigs.values()))
 
+        if pool is None:
+            pool = RESOURCES.pool
+
         n = 0  # Gene counter
-        for contig, genes in zip(self.contigs.values(), pool.map(lambda contig: gene_finder.find_genes(bytes(contig.seq)), self.contigs.values())):
+        for contig, genes in zip(
+                self.contigs.values(),
+                pool.map(lambda contig: gene_finder.find_genes(bytes(contig.seq)), self.contigs.values())
+        ):
             features = []
             for gene in genes:  # type: Gene
                 features.append(cds := Feature(
@@ -639,10 +638,10 @@ def _parse_fastq(handle: TextIO) -> Generator[Record, None, None]:
 
 def _parse_gfa(handle: TextIO) -> Generator[Union[Record, Edge], None, None]:
     """
-    Simple GFA parser
+    Simple GFA parser, see https://gfa-spec.github.io/GFA-spec/GFA1.html
 
     :param handle: A file handle opened in text-mode / text stream
-    :returns: A Generator of Record objects
+    :returns: A Generator of Record or Edge objects
     """
     records = False
     for line in handle:  # Iterate over file lines
@@ -652,8 +651,9 @@ def _parse_gfa(handle: TextIO) -> Generator[Union[Record, Edge], None, None]:
                 yield Record(parts[0], parts[1], qualifiers=list(_parse_tags(parts[2])) if len(parts) > 2 else [])
                 records = True
         elif line.startswith('L\t'):  # Add links once all contigs are added
-            fr, fr_strand, to, to_strand = line[2:].strip().split('\t')[:4]
-            yield Edge(fr, to, 1 if fr_strand == '+' else -1, 1 if to_strand == '+' else -1)
+            fr, fr_strand, to, to_strand, cigar = line[2:].strip().split('\t')[:5]
+            yield Edge(fr, to, 1 if fr_strand == '+' else -1, 1 if to_strand == '+' else -1,
+                       next((n for op, n in parse_cigar(cigar) if op == 'M'), 0))
     if not records:
         warn('No records parsed', ParserWarning)
 

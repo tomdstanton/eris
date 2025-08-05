@@ -101,26 +101,20 @@ class Alignment(HasLocation):
             if 'AS' in self.tags:  # Add alignment score to attributes
                 self.score = self.tags.pop('AS')
             self.location.parent_id = self.target
-            if self.location.end + (self.query_length - self.query_end) >= self.target_length:  # + strand only, test -
-                self.location.partial_end = True
-            if self.location.start < self.query_start:  # + strand only, test -
-                self.location.partial_start = True
+
+            is_partial_at_query_start = self.query_start > 0
+            is_partial_at_query_end = self.query_end < self.query_length
+
+            if self.location.strand == 1:
+                self.location.partial_start = is_partial_at_query_start
+                self.location.partial_end = is_partial_at_query_end
+            else:
+                self.location.partial_start = is_partial_at_query_end
+                self.location.partial_end = is_partial_at_query_start
+
             return self
         except Exception as e:
             raise AlignmentError(f"Error parsing PAF line: {paf_line}: {e}")
-
-
-    def iter_cigar(self) -> Generator[tuple[Literal['M', 'I', 'D', 'N', 'S', 'H', 'P', '=', 'X'], int], None, None]:
-        """
-        Parses the cigar with a regular expression
-        :return: A Generator of tuples containing the operation symbol and span
-        """
-        if not self.cigar:
-            raise AlignmentError(f'No CIGAR computed for {self}')
-        for match in _CIGAR_OPERATIONS.finditer(self.cigar):
-            if not match:
-                raise AlignmentError(f'Could not parse cigar: {self.cigar}')
-            yield match['operation'], int(match['n'])
 
     def get_aligned_seqs(self, query: Seq = None, target: Seq = None, gap_character: str = '-') -> tuple[Seq, Seq]:
         """
@@ -141,7 +135,7 @@ class Alignment(HasLocation):
             target_trimmed = str(target[self.location.start:self.location.end])
             query_traceback, target_traceback = [], []
             query_position, target_position = 0, 0
-            for operation, n in self.iter_cigar():
+            for operation, n in parse_cigar(self.cigar):
                 if operation in _QUERY_CONSUMING_OPERATIONS:
                     query_traceback.append(query_trimmed[query_position:query_position + n])
                     query_position += n
@@ -168,8 +162,7 @@ class Alignment(HasLocation):
 
     def as_feature(self, kind: str = 'misc_feature') -> Feature:
         return Feature(
-            location=self.location, id_=f"{self.query}|{self.target}|{self.location}", kind=kind,
-            qualifiers=[
+            location=self.location, kind=kind, qualifiers=[
                 Qualifier('name', self.query),
                 Qualifier('query_start', self.query_start),
                 Qualifier('query_end', self.query_end),
@@ -236,4 +229,16 @@ def cull_all(alignments: Iterable[Alignment], key='n_matches', reverse_sort: boo
         kept_alignments.append(sorted_alignments.pop(0))
         sorted_alignments = list(cull(kept_alignments[-1], sorted_alignments))
     return kept_alignments
+
+
+def parse_cigar(cigar: str) -> Generator[tuple[Literal['M', 'I', 'D', 'N', 'S', 'H', 'P', '=', 'X'], int], None, None]:
+    """
+    Parses the cigar with a regular expression
+    :return: A Generator of tuples containing the operation symbol and span
+    """
+    if cigar:
+        for match in _CIGAR_OPERATIONS.finditer(cigar):
+            if not match:
+                raise AlignmentError(f'Could not parse cigar: {cigar}')
+            yield match['operation'], int(match['n'])
 

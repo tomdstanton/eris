@@ -76,25 +76,30 @@ Inputs:
   Note, Genome(s) in FASTA/GFA format can paired up with GFA/BED
   annotation files with the same prefix.
 
-  <genome>         Genome(s) in FASTA, GFA or Genbank format;
-                   reads from stdin by default.
+  <genome>              Genome(s) in FASTA, GFA or Genbank format;
+                        reads from stdin by default.
+  -a [ ...], --annotations [ ...]
+                        Optional genome annotations in GFF3/BED format;
+                        These will be matched up to input genomes (FASTA/GFA) 
+                        with corresponding filenames
 
 Outputs:
   
   Note, text outputs accept "-" or "stdout" for stdout
   If a directory is passed, individual files will be written per input genome
 
-  --tsv []         Path to output tabular results (default: stdout)
-  --ffn []         Path to output feature DNA sequences in FASTA format;
-                   defaults to "./[genome]_eris_results.ffn" when passed without arguments.
-  --faa []         Path to output feature Amino acid sequences in FASTA format;
-                   defaults to "./[genome]_eris_results.faa" when passed without arguments.
-  --no-tsv-header  Suppress header in TSV output
+  --tsv []              Path to output tabular results (default: stdout)
+  --ffn []              Path to output Feature DNA sequences in FASTA format;
+                        defaults to "./[genome]_eris_results.ffn" when passed without arguments.
+  --faa []              Path to output Feature Amino acid sequences in FASTA format;
+                        defaults to "./[genome]_eris_results.faa" when passed without arguments.
+  --no-tsv-header       Suppress header in TSV output
 
 Other options:
 
-  -v, --version    Show version number and exit
-  -h, --help       Show this help message and exit
+  --progress            Show progress bar
+  -v, --version         Show version number and exit
+  -h, --help            Show this help message and exit
 
 For more help, visit: eris.readthedocs.io
 ```
@@ -105,15 +110,15 @@ will align IS element nucleotide sequences from the [ISFinder](https://isfinder.
 assembly contigs using [minimap2](https://lh3.github.io/minimap2/).
 1. These alignments are then sorted by their target contig, and culled such that each region aligned contains the highest 
 scoring query.
-1. Each IS element alignment is then considered to be a "mobile-element" feature, and added to the list
-of features on the respective contig.
+1. Each Element alignment is then considered to be a "mobile-element" Feature, and added to the list
+of Features on the respective contig.
 1. If the genome is from a sequence file (FASTA/GFA), ORFs are predicted with 
-[Pyrodigal](https://pyrodigal.readthedocs.io/en/stable) and CDS features are added to each contig.
-1. The genome is then converted into a **feature graph**, whereby features on each contig, sorted by their respective
-start coordinates, are connected to their flanking features; and if the contig is connected to other contigs 
-(GFA input), features on the termini of connected contigs are also connected to each other.
-1. For each IS element feature, the **[Breadth-first search](https://en.wikipedia.org/wiki/Breadth-first_search) (BFS)**
-algorithm traverses the **feature graph** to find CDS that either **overlap** (part of the element) or **flank**
+[Pyrodigal](https://pyrodigal.readthedocs.io/en/stable) and CDS Features are added to each contig.
+1. The genome is then converted into a **Feature graph**, whereby Features on each contig, sorted by their respective
+start coordinates, are connected to their flanking Features; and if the contig is connected to other contigs 
+(GFA input), Features on the termini of connected contigs are also connected to each other.
+1. For each Element Feature, the **[Breadth-first search](https://en.wikipedia.org/wiki/Breadth-first_search) (BFS)**
+algorithm traverses the **Feature graph** to find CDS that either **overlap** (part of the element) or **flank**
 the element.
 
 #### Performance 
@@ -128,44 +133,51 @@ can be written to separate files via the respective CLI flags.
 
 #### TSV tabular output
 
-The TSV tabular output reports one line per **feature** of interest, which can either be the IS element itself from the
-resulting alignments, the CDS _inside_ the IS element, or the CDS _flanking_ the IS element. If the context is the
-IS element, information about the element from [ISFinder](https://isfinder.biotoul.fr/) will be reported. If the context is a CDS, information about
+The TSV tabular output reports one line per **Feature** of interest, which can either be the Element itself from the
+resulting alignments, the CDS _inside_ the Element, or the CDS _flanking_ the Element. If the context is the
+Element, information about the element from [ISFinder](https://isfinder.biotoul.fr/) will be reported. If the context is a CDS, information about
 the ORF/translation will be reported.
 
 The TSV columns are as follows:
 
 1. **Genome**: The name of the input genome.
-1. **IS_element**: The unique identifier of the IS element.
-1. **Context**: Signifies the IS element from alignment, a CDS inside or a CDS outside the IS element.
-1. **Feature**: The unique identifier of the feature in question.
-1. **Type**: The [feature type](https://www.insdc.org/submitting-standards/feature-table/), currently only CDS are 
-supported if annotations are provided; IS elements are annotated as "`mobile_element`".
-1. **Contig**: The name of the contig the IS element is on.
-1. **Start**: The start coordinate (0-based) of the feature.
-1. **End**: The end coordinate of the feature.
-1. **Strand**: The strand of the feature (1 or -1).
-1. **Partial_start**: Whether the CDS overlaps with the start of the sequence.
-1. **Partial_end**: Whether the CDS overlaps with the end of the sequence.
-1. **Translation_start**: The first amino acid residue of the CDS translation (should be `M`).
-1. **Translation_end**: The last amino acid residue of the CDS translation (should be `*`).
-1. **Percent_identity**: The percent identity of the IS element.
-1. **Percent_coverage**: The percent coverage of the IS element.
-1. **Name**: The name of the IS element if known (from ISFinder).
-1. **Family**: The family of the IS element if known (from ISFinder).
-1. **Group**: The group of the IS element if known (from ISFinder).
-1. **Synonyms**: The synonyms of the IS element if known (from ISFinder).
-1. **Origin**: The origin of the IS element if known (from ISFinder).
-1. **IR**: The relative location of the inverted repeat of the IS element if known (from ISFinder).
-1. **DR**: The relative location of the direct repeat of the IS element if known (from ISFinder).
+1. **Feature**: The unique identifier of the Feature in question.
+1. **Type**: The [Feature type](https://www.insdc.org/submitting-standards/feature-table/), currently only CDS are 
+supported if annotations are provided; Elements are annotated as "`mobile_element`" and promoters are annotated as
+"`regulatory`".
+1. **Contig**: The name of the contig the Element is on.
+1. **Start**: The start coordinate (0-based) of the Feature.
+1. **End**: The end coordinate of the Feature.
+1. **Strand**: The strand of the Feature (1 or -1).
+1. **Partial**: Whether the Feature overlaps with the start or end the contig.
+1. **Element**: The unique identifier of the Element from the current context.
+1. **Element_distance**: Signifies the distance of the Feature from the Element from the current context.
+1. **Element_location**: Signifies the relative location of the Element from the current context.
+1. **Element_strand**: Signifies the relative strand of the Element from the current context.
+1. **Element_effect**: Signifies the relative effect of the Element from the current context on the CDS.
+1. **Percent_identity**: The percent identity of the Element.
+1. **Percent_coverage**: The percent coverage of the Element.
+1. **Name**: The name of the Element if known (from ISFinder).
+1. **Family**: The family of the Element if known (from ISFinder).
+1. **Group**: The group of the Element if known (from ISFinder).
+1. **Synonyms**: The synonyms of the Element if known (from ISFinder).
+1. **Origin**: The origin of the Element if known (from ISFinder).
+1. **IR**: The relative location of the inverted repeat of the Element if known (from ISFinder).
+1. **DR**: The relative location of the direct repeat of the Element if known (from ISFinder).
 
-#### Caveats and things to do
- - Exact promoter region quantification for flanking genes to add more evidence of gene promotion.
- - If providing multiple sequence file inputs from different species, the `pyrodigal.GeneFinder` instance
-will be trained on the first genome, which may impact how well it finds ORFs in other species.
- - Consider implementing [FragGeneScanRs](https://github.com/unipept/FragGeneScanRs) instead of Pyrodigal 
-(faster + works on reads)
+#### Example output
+This is a single Element context in TSV format from a _K. pneumoniae_ genome, supplied from a GFA and BED file.
+You can see that the Element (`0db94675-30ef-4b28-a212-f26cbad7409e`) contains one CDS, one promoter and is of the
+IS1380 family. On the same strand downstream is one CDS, annotated as a CTX-M-15 gene, known to confer ESBL resistance.
+As the Element contains a promoter and is on the same strand downstream, and in close proximity (48bp),
+we predict this gene is being upregulated.
 
+| Genome     | Feature                                         | Type           | Contig | Start | End  | Strand | Partial | Element                              | Element_distance | Element_location | Element_strand | Element_effect | Percent_identity | Percent_coverage | Name                                              | Family | Group | Synonyms | Origin           | IR    | DR |
+| ---------- | ----------------------------------------------- | -------------- | ------ | ----- | ---- | ------ | ------- | ------------------------------------ | ---------------- | ---------------- | -------------- | -------------- | ---------------- | ---------------- | ------------------------------------------------- | ------ | ----- | -------- | ---------------- | ----- | -- |
+| ERR4920392 | KNDCPA_05188                                    | CDS            | 65     | 834   | 1710 | \-1    | FALSE   | 0db94675-30ef-4b28-a212-f26cbad7409e | 48bp             | downstream       | same strand    | upregulated    | \-               | \-               | extended-spectrum class A beta-lactamase CTX-M-15 | \-     | \-    | \-       | \-               | \-    | \- |
+| ERR4920392 | 0db94675-30ef-4b28-a212-f26cbad7409e            | mobile_element | 65     | 1758  | 2157 | \-1    | TRUE    | 0db94675-30ef-4b28-a212-f26cbad7409e | \-               | \-               | \-             | \-             | 100              | 24.0942029       | ISEc9                                             | IS1380 |       | None     | Escherichia coli | 13/22 | NA |
+| ERR4920392 | KNDCPA_05189                                    | CDS            | 65     | 1862  | 1985 | \-1    | FALSE   | 0db94675-30ef-4b28-a212-f26cbad7409e | \-               | inside           | same strand    | \-             | \-               | \-               | MobQ family relaxase                              | \-     | \-    | \-       | \-               | \-    | \- |
+| ERR4920392 | 0db94675-30ef-4b28-a212-f26cbad7409e_promoter_1 | regulatory     | 65     | 2053  | 2083 | \-1    | FALSE   | 0db94675-30ef-4b28-a212-f26cbad7409e | \-               | inside           | \-             | \-             | \-               | \-               | \-                                                | \-     | \-    | \-       | \-               | \-    | \- |
 
 ### Pan 🦘
 `eris pan` quantifies the effect of IS-mediated events in pan-genome graphs.

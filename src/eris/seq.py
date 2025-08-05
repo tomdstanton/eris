@@ -6,6 +6,7 @@ from typing import Literal, Iterator, Union, Any, Generator, Iterable
 from copy import copy
 from random import Random
 from uuid import uuid4
+from re import compile as regex
 
 from eris import RESOURCES
 from eris.alphabet import Alphabet, DNA, _DNA
@@ -13,6 +14,9 @@ from eris.graph import Edge, GraphError
 
 # Constants ------------------------------------------------------------------------------------------------------------
 _TYPE2TAG = {float: 'f', int: 'i', str: 'Z'}  # See: https://github.com/GFA-spec/GFA-spec/blob/master/GFA1.md#optional-fields
+# _PROMOTER_REGEX = regex("r(?P<minus_35>TTG[AC][AC]A).{15,21}(?P<minus_10>TATA[AT]T)")
+_PROMOTER_REGEX = regex(r"(?P<minus_35>TT[GCA][ATGC]{2}[A]).{15,21}(?P<minus_10>TA[ATGC]{2}A[AT])")
+
 
 # Classes --------------------------------------------------------------------------------------------------------------
 class LocationError(Exception):
@@ -42,6 +46,9 @@ class Location:
         self.joins: list[Location] = list(joins)
         # TODO: Implement more methods inspired by
         #  https://github.com/sanger-pathogens/Fastaq/blob/master/src/pyfastaq/intervals.py
+
+    def __hash__(self):
+        return hash((self.start, self.end, self.strand, self.parent_id))
 
     def __repr__(self):
         return (f"{'>' if self.partial_start else ''}{self.start}:{self.end}{'<' if self.partial_end else ''}"
@@ -99,12 +106,6 @@ class Location:
         else:
             raise NotImplementedError(f'Invalid format: {__format_spec}')
 
-    def partial(self) -> bool:
-        """
-        Returns True if the location is partial, False otherwise
-        """
-        return self.partial_start or self.partial_end
-
     def overlap(self, other: Union['Location', 'HasLocation']) -> int:
         """
         Returns the length of the overlap between two locations
@@ -149,8 +150,10 @@ class Location:
         )
 
     @classmethod
-    def random(cls, rng: Random = RESOURCES.rng, length: int = None, min_len: int = 1, max_len: int = 10000,
+    def random(cls, rng: Random = None, length: int = None, min_len: int = 1, max_len: int = 10000,
                min_start: int = 0, max_start: int = 1000000):
+        if rng is None:
+            rng = RESOURCES.rng
         if not length:
             length = rng.randint(min_len, max_len)
         start = rng.randint(min_start, max_start - length)
@@ -201,6 +204,9 @@ class HasLocation:
         Returns True if the object contains the item, False otherwise
         """
         return self.location.__contains__(item)
+
+    def partial(self) -> bool:
+        return self.location.partial_start or self.location.partial_end
 
 
 class SeqError(Exception):
@@ -293,8 +299,10 @@ class Seq:
 
     @classmethod
     def random(
-            cls, alphabet: Alphabet, rng: Random = RESOURCES.rng, gc: float = 0.5, length: int = None,
+            cls, alphabet: Alphabet, rng: Random = None, gc: float = 0.5, length: int = None,
             min_len: int = 10, max_len: int = 5000000) -> 'Seq':
+        if rng is None:
+            rng = RESOURCES.rng
         if isinstance(alphabet, _DNA):
             at = (1 - gc) / 2
             gc /= 2
@@ -491,7 +499,7 @@ class Record:
                 del feature  # Feature overlaps the deleted part, remove it
 
     @classmethod
-    def random(cls, id_: str = None, alphabet: Alphabet = DNA, rng: Random = RESOURCES.rng, gc: float = 0.5,
+    def random(cls, id_: str = None, alphabet: Alphabet = DNA, rng: Random = None, gc: float = 0.5,
                length: int = None, min_len: int = 10, max_len: int = 5000000) -> 'Record':
         """
         Generates a random record for testing purposes.
@@ -507,7 +515,7 @@ class Record:
         """
         return cls(id_ or str(uuid4()), Seq.random(alphabet, rng, gc, length, min_len, max_len))
 
-    def shred(self, rng: Random = RESOURCES.rng, n_breaks: int = None, break_points: list[int] = None
+    def shred(self, rng: Random = None, n_breaks: int = None, break_points: list[int] = None
               ) -> Generator['Record', None, None]:
         """
         Shreds the record into smaller records at the specified break points.
@@ -518,6 +526,8 @@ class Record:
         :param break_points: A list of break points to use. If not provided, random break points will be generated.
         :return: A generator of smaller records
         """
+        if rng is None:
+            rng = RESOURCES.rng
         if not n_breaks:
             n_breaks = rng.randint(1, len(self) // 2)
         if not break_points:
@@ -541,7 +551,8 @@ class Record:
         if not 0 < at < len(self):
             raise IndexError(f'Cannot insert at {at}, must be between 0 and {len(self)}')
         else:
-            return self[:at] + other + self[at if not replace else at + len(other):]
+            new = self[:at] + other + self[at if not replace else at + len(other):]
+            return new
 
     def translate(self, to_stop: bool = True, stop_symbol: str = "*", frame: Literal[0, 1, 2] = 0,
                   gap_character: str = None) -> 'Record':
@@ -605,10 +616,10 @@ class Feature(HasLocation):
         qualifiers: A list of Qualifier objects providing additional information about the feature.
     """
 
-    def __init__(self, location: Location, id_: str = 'unknown', kind: str = 'misc_feature',
+    def __init__(self, location: Location, id_: str = None, kind: str = 'misc_feature',
                  seq: Union[Seq, str] = None, qualifiers: list[Qualifier] = None):
         super().__init__(location)
-        self.id = id_
+        self.id = id_ or str(uuid4())
         self.kind = kind
         self.seq = (seq if isinstance(seq, Seq) else Seq(seq)) if seq else None
         self.qualifiers = qualifiers or []
@@ -623,7 +634,7 @@ class Feature(HasLocation):
         return hash(self.id)
 
     def __eq__(self, other):
-        if isinstance(other, Feature):
+        if isinstance(other, 'Feature'):
             return self.id == other.id
         return False
     
@@ -658,7 +669,7 @@ class Feature(HasLocation):
             raise NotImplementedError(f'Format "{__format_spec}" not supported')
 
     @classmethod
-    def random(cls, parent: Record, id_: str = None, rng: Random = RESOURCES.rng, min_len: int = 1,
+    def random(cls, parent: Record, id_: str = None, rng: Random = None, min_len: int = 1,
                max_len: int = 10000, min_start: int = 0, max_start: int = 1000000):
         location = Location.random(rng, min_len=min_len, max_len=min(max_len, len(parent)), min_start=min_start,
                                    max_start=min(max_start, len(parent) - max_len))
@@ -670,7 +681,7 @@ class Feature(HasLocation):
     def translate(
             self, to_stop: bool = True, stop_symbol: str = "*", frame: Literal[0, 1, 2] = 0, gap_character: str = None,
             store_translation: bool = True,
-            parent: Union[Union['Seq', 'Record', 'Feature'], dict[str, Union['Seq', 'Record', 'Feature']]] = None,
+            parent: Union[Union[Seq, Record, 'Feature'], dict[str, Union[Seq, Record, 'Feature']]] = None,
             store_seq: bool = False
     ) -> Seq:
         """
@@ -706,7 +717,7 @@ class Feature(HasLocation):
             self.qualifiers.append(Qualifier('GC', gc))
         return gc
 
-    def extract(self, parent: Union[Union['Seq', 'Record', 'Feature'], dict[str, Union['Seq', 'Record', 'Feature']]],
+    def extract(self, parent: Union[Union[Seq, Record, 'Feature'], dict[str, Union[Seq, Record, 'Feature']]],
                 store_seq: bool = False) -> 'Seq':
         seq = self.location.extract(parent)
         if store_seq:
@@ -721,3 +732,16 @@ class Feature(HasLocation):
             self.location.reverse_complement(parent_length), self.id, self.kind,
             self.seq.reverse_complement() if self.seq else None, self.qualifiers
         )
+
+    def find_promoters(self, parent: Union[Union[Seq, Record, 'Feature']]) -> Generator['Feature', None, None]:
+        """
+        Finds promoters within the feature's sequence.
+
+        :param parent: Parent object (``Seq``, ``Record``, ``Feature``)
+        :return: Generator of Feature objects representing the promoters
+        """
+        for n, match in enumerate(_PROMOTER_REGEX.finditer(str(self.seq)), start=1):
+            yield Feature(
+                Location(match.start() + self.location.start, match.end() + self.location.start, self.location.strand,
+                         parent_id=self.location.parent_id),f"{self.id}_promoter_{n}", 'regulatory',
+                         qualifiers=[Qualifier('regulatory_class', 'promoter')])

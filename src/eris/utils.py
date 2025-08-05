@@ -225,7 +225,7 @@ def bold(text: str):
     return f"\033[1m{text}\033[0m"
 
 
-def get_logo(message: str, width: int = 58) -> str:  # 43 is the width of the logo
+def get_logo(message: str) -> str:  # 43 is the width of the logo
     """
     Returns the eris logo with a message centered below it.
 
@@ -233,4 +233,5 @@ def get_logo(message: str, width: int = 58) -> str:  # 43 is the width of the lo
     :param width: Width of the logo.
     :return: Formatted logo string.
     """
-    return f"\033[1;35m========================|> eris |>========================\n{message.center(width)}\033[0m"
+    logo = '========================|> eris |>========================'
+    return f"\033[1;35m{logo}\n{message.center(len(logo))}\033[0m"
